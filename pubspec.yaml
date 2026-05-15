@@ -1,0 +1,39 @@
+name: financiero
+description: Prosper - The ultimate fintech platform for financial clarity.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  supabase_flutter: ^2.5.0
+  flutter_bloc: ^8.1.3
+  provider: ^6.1.1
+  equatable: ^2.0.5
+  google_fonts: ^6.1.0
+  intl: ^0.19.0
+  fl_chart: ^0.66.0
+  percent_indicator: ^4.2.3
+  font_awesome_flutter: ^10.7.0
+  plaid_flutter: ^2.0.0
+  shared_preferences: ^2.2.2
+  animations: ^2.0.11
+  local_auth: ^2.2.0
+  shimmer: ^3.0.0
+  quick_actions: ^1.0.8
+  path_provider: ^2.1.2
+  csv: ^6.0.0
+  lottie: ^3.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/lottie/
