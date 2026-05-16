@@ -16,7 +16,7 @@ class _DebtSimulatorState extends State<DebtSimulator> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
+    return SolidCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -24,27 +24,27 @@ class _DebtSimulatorState extends State<DebtSimulator> {
           const SizedBox(height: 16),
           TextField(
             controller: _amountController,
-            decoration: const InputDecoration(labelText: 'Monto total', prefixText: 'â‚¬ '),
+            decoration: const InputDecoration(labelText: 'Monto total', prefixText: '\$ '),
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _interestController,
-            decoration: const InputDecoration(labelText: 'InterÃ©s anual', suffixText: '%'),
+            decoration: const InputDecoration(labelText: 'Interés anual', suffixText: '%'),
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _paymentController,
-            decoration: const InputDecoration(labelText: 'Pago mensual', prefixText: 'â‚¬ '),
+            decoration: const InputDecoration(labelText: 'Pago mensual', prefixText: '\$ '),
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 24),
           _buildResult(),
-        ],
+        
       ),
     );
   }
@@ -67,11 +67,15 @@ class _DebtSimulatorState extends State<DebtSimulator> {
       }
 
       return Text(
-        'TerminarÃ¡s de pagar en $months meses.',
-        style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryCyan),
+        'Terminarás de pagar en $months meses.',
+        style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryIndigo),
       );
     } catch (e) {
       return const Text('Ingresa valores para simular tu pago.');
     }
   }
 }
+
+
+
+

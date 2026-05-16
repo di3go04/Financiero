@@ -17,7 +17,7 @@ class DashboardSkeleton extends StatelessWidget {
           _shimmerBox(height: 40, width: 200, radius: 8),
           const SizedBox(height: 16),
           _shimmerBox(height: 200, width: double.infinity, radius: 24),
-        ],
+        
       ),
     );
   }
@@ -37,3 +37,5 @@ class DashboardSkeleton extends StatelessWidget {
     );
   }
 }
+
+

@@ -1,13 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/screens/onboarding/onboarding_screen.dart';
-import 'logic/blocs/auth/auth_bloc.dart';
+import 'logic/blocs/auth/auth_bloc.dart' hide AuthState;
 import 'ui/screens/auth/login_screen.dart';
 import 'ui/screens/auth/register_screen.dart';
 import 'logic/providers/theme_provider.dart';
+import 'logic/providers/currency_provider.dart';
+import 'logic/providers/user_settings_provider.dart';
 import 'ui/screens/main/main_shell.dart';
 import 'ui/screens/settings/settings_screen.dart';
 import 'core/utils/page_transitions.dart';
@@ -24,6 +27,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => CurrencyProvider()),
+        ChangeNotifierProvider(create: (_) => UserSettingsProvider()),
         BlocProvider(create: (context) => AuthBloc()),
       ],
       child: const FinWiseApp(),
@@ -31,8 +36,40 @@ void main() async {
   );
 }
 
-class FinWiseApp extends StatelessWidget {
+class FinWiseApp extends StatefulWidget {
   const FinWiseApp({super.key});
+
+  @override
+  State<FinWiseApp> createState() => _FinWiseAppState();
+}
+
+class _FinWiseAppState extends State<FinWiseApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  late final StreamSubscription<AuthState> _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // Persistencia y Navegación automática basada en Supabase Auth Listener
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      final Session? session = data.session;
+      
+      if (!mounted) return;
+      
+      if (event == AuthChangeEvent.signedIn && session != null) {
+        _navigatorKey.currentState?.pushReplacementNamed('/dashboard');
+      } else if (event == AuthChangeEvent.signedOut) {
+        _navigatorKey.currentState?.pushReplacementNamed('/login');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,11 +79,13 @@ class FinWiseApp extends StatelessWidget {
       data: themeProvider.themeMode == ThemeMode.dark ? AppTheme.darkTheme : AppTheme.lightTheme,
       duration: const Duration(milliseconds: 500),
       child: MaterialApp(
+        navigatorKey: _navigatorKey,
         title: 'Prosper',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: themeProvider.themeMode,
+        initialRoute: Supabase.instance.client.auth.currentUser != null ? '/dashboard' : '/',
         onGenerateRoute: (settings) {
           Widget page;
           switch (settings.name) {
@@ -74,3 +113,5 @@ class FinWiseApp extends StatelessWidget {
     );
   }
 }
+
+

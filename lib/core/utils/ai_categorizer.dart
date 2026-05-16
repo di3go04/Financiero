@@ -23,3 +23,5 @@ class AICategorizer {
     return 'Otros';
   }
 }
+
+

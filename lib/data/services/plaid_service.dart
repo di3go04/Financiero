@@ -3,7 +3,7 @@ import 'package:plaid_flutter/plaid_flutter.dart';
 import '../../models/transaction.dart';
 
 class PlaidService {
-  // ConfiguraciÃ³n de Plaid (usando modo sandbox para el MVP)
+  // Configuración de Plaid (usando modo sandbox para el MVP)
   static const String clientId = 'YOUR_PLAID_CLIENT_ID';
   static const String secret = 'YOUR_PLAID_SECRET';
   
@@ -62,3 +62,6 @@ class PlaidService {
     ];
   }
 }
+
+
+

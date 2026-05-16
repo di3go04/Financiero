@@ -18,16 +18,17 @@ class FinancialCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
+    return SolidCard(
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: (color ?? AppTheme.primaryCyan).withValues(alpha: 0.1),
+              color: Colors.transparent, // Solid design, no more light bg
               borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: (color ?? AppTheme.primaryIndigo)),
             ),
-            child: Icon(icon, color: color ?? AppTheme.primaryCyan),
+            child: Icon(icon, color: color ?? AppTheme.primaryIndigo),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -37,11 +38,12 @@ class FinancialCard extends StatelessWidget {
                 Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
                 const SizedBox(height: 4),
                 Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              ],
+              
             ),
           ),
-        ],
+        
       ),
     );
   }
 }
+

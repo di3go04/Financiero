@@ -53,12 +53,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
               child: Text('APARIENCIA', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12)),
             ),
-            GlassCard(
+            SolidCard(
               padding: EdgeInsets.zero,
               child: ListTile(
                 title: const Text('Modo de Tema'),
                 subtitle: Text(_getThemeName(themeProvider.themeMode)),
-                leading: const Icon(Icons.palette_rounded, color: AppTheme.primaryCyan),
+                leading: const Icon(Icons.palette_rounded, color: AppTheme.primaryIndigo),
                 onTap: () => _showThemeDialog(context, themeProvider),
               ),
             ),
@@ -68,14 +68,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text('SEGURIDAD', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12)),
             ),
             if (_canUseBiometrics)
-              GlassCard(
+              SolidCard(
                 padding: EdgeInsets.zero,
                 child: SwitchListTile(
                   title: const Text('AutenticaciÃ³n BiomÃ©trica'),
                   subtitle: const Text('Usa FaceID o Huella para entrar'),
-                  secondary: const Icon(Icons.fingerprint_rounded, color: AppTheme.primaryCyan),
+                  secondary: const Icon(Icons.fingerprint_rounded, color: AppTheme.primaryIndigo),
                   value: _biometricEnabled,
-                  activeThumbColor: AppTheme.primaryCyan,
+                  activeThumbColor: AppTheme.primaryIndigo
                   onChanged: (value) async {
                     if (value) {
                       final authenticated = await _biometricService.authenticate();
@@ -109,11 +109,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Icon(Icons.logout_rounded, color: Colors.red),
                     SizedBox(width: 12),
                     Text('Cerrar sesiÃ³n', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                  ],
+                  
                 ),
               ),
             ),
-          ],
+          
         ),
       ),
     );
@@ -145,22 +145,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               RadioListTile<ThemeMode>(
                 title: Text('Sistema'),
                 value: ThemeMode.system,
-                activeColor: AppTheme.primaryCyan,
+                activeColor: AppTheme.primaryIndigo
               ),
               RadioListTile<ThemeMode>(
                 title: Text('Claro'),
                 value: ThemeMode.light,
-                activeColor: AppTheme.primaryCyan,
+                activeColor: AppTheme.primaryIndigo
               ),
               RadioListTile<ThemeMode>(
                 title: Text('Oscuro'),
                 value: ThemeMode.dark,
-                activeColor: AppTheme.primaryCyan,
+                activeColor: AppTheme.primaryIndigo
               ),
-            ],
+            
           ),
         ),
       ),
     );
   }
 }
+
+
+

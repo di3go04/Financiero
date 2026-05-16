@@ -21,11 +21,11 @@ class DashboardScreen extends StatelessWidget {
             padding: EdgeInsets.only(right: 16),
             child: CircleAvatar(
               radius: 18,
-              backgroundColor: AppTheme.primaryCyan,
+              backgroundColor: AppTheme.primaryIndigo
               child: Icon(Icons.person, color: Colors.white, size: 20),
             ),
           ),
-        ],
+        
       ),
       body: const SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -44,13 +44,13 @@ class DashboardScreen extends StatelessWidget {
             SizedBox(height: 16),
             TransactionList(),
             SizedBox(height: 100), // Espacio para el FAB
-          ],
+          
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {},
-        backgroundColor: AppTheme.primaryCyan,
-        label: const Text('Nueva TransacciÃ³n', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppTheme.primaryIndigo
+        label: const Text('Nueva Transacción', style: TextStyle(color: Colors.white)),
         icon: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -81,13 +81,13 @@ class HealthScoreCard extends StatelessWidget {
                   value: 0.85,
                   strokeWidth: 8,
                   backgroundColor: Colors.grey.withValues(alpha: 0.1),
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryCyan),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryIndigo),
                 ),
                 const Text(
                   '85',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-              ],
+              
             ),
           ),
           const SizedBox(width: 20),
@@ -101,13 +101,13 @@ class HealthScoreCard extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Â¡Vas por buen camino! Has ahorrado un 15% mÃ¡s que el mes pasado.',
+                  'Ã‚Â¡Vas por buen camino! Has ahorrado un 15% mÃƒÂ¡s que el mes pasado.',
                   style: TextStyle(color: Colors.grey, fontSize: 13),
                 ),
-              ],
+              
             ),
           ),
-        ],
+        
       ),
     );
   }
@@ -122,18 +122,18 @@ class BalanceCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppTheme.primaryCyan, AppTheme.secondaryBlue],
+          colors: [AppTheme.primaryIndigo AppTheme.expenseCoral
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryCyan.withValues(alpha: 0.3),
+            color: AppTheme.primaryIndigo.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
-        ],
+        
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,7 +144,7 @@ class BalanceCard extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            '12.450,00 â‚¬',
+            '\$12.450,00',
             style: TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -157,19 +157,19 @@ class BalanceCard extends StatelessWidget {
             children: [
               _BalanceInfo(
                 label: 'Ingresos',
-                amount: '+ 3.200 â‚¬',
+                amount: '+ \$3.200',
                 icon: Icons.arrow_upward_rounded,
                 color: Colors.white,
               ),
               _BalanceInfo(
                 label: 'Gastos',
-                amount: '- 1.850 â‚¬',
+                amount: '- \$1.850',
                 icon: Icons.arrow_downward_rounded,
                 color: Colors.white,
               ),
-            ],
+            
           ),
-        ],
+        
       ),
     );
   }
@@ -206,9 +206,9 @@ class _BalanceInfo extends StatelessWidget {
           children: [
             Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
             Text(amount, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ],
+          
         ),
-      ],
+      
     );
   }
 }
@@ -230,7 +230,7 @@ class SectionHeader extends StatelessWidget {
           onPressed: () {},
           child: const Text('Ver todo'),
         ),
-      ],
+      
     );
   }
 }
@@ -252,7 +252,7 @@ class CategoryChart extends StatelessWidget {
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
-        ],
+        
       ),
       child: PieChart(
         PieChartData(
@@ -260,14 +260,14 @@ class CategoryChart extends StatelessWidget {
           centerSpaceRadius: 40,
           sections: [
             PieChartSectionData(
-              color: AppTheme.primaryCyan,
+              color: AppTheme.primaryIndigo
               value: 40,
               title: 'Vivienda',
               radius: 50,
               titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             PieChartSectionData(
-              color: AppTheme.secondaryBlue,
+              color: AppTheme.expenseCoral,
               value: 30,
               title: 'Comida',
               radius: 50,
@@ -287,7 +287,7 @@ class CategoryChart extends StatelessWidget {
               radius: 50,
               titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
             ),
-          ],
+          
         ),
       ),
     );
@@ -311,9 +311,9 @@ class TransactionList extends StatelessWidget {
             child: Icon(Icons.shopping_bag_outlined, color: AppTheme.textDark),
           ),
           title: Text('Mercadona Supermercado', style: TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text('14 Mayo, 2026 â€¢ Comida'),
+          subtitle: Text('14 Mayo, 2026 Ã¢â‚¬Â¢ Comida'),
           trailing: Text(
-            '- 45,60 â‚¬',
+            '- \$45,60',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
           ),
         );
@@ -321,3 +321,7 @@ class TransactionList extends StatelessWidget {
     );
   }
 }
+
+
+
+

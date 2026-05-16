@@ -26,3 +26,5 @@ class Transaction extends Equatable {
   @override
   List<Object?> get props => [id, userId, accountId, amount, category, date, name, merchantName, pending];
 }
+
+

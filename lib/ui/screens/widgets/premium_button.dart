@@ -61,8 +61,8 @@ class _PremiumButtonState extends State<PremiumButton> with SingleTickerProvider
                 ? LinearGradient(colors: widget.gradient!)
                 : null,
               boxShadow: _isHovered 
-                ? [BoxShadow(color: (widget.gradient?.first ?? AppTheme.primaryCyan).withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 2)]
-                : [],
+                ? [BoxShadow(color: (widget.gradient?.first ?? AppTheme.primaryIndigo).withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 2)]
+                : [
             ),
             child: widget.child,
           ),
@@ -71,3 +71,6 @@ class _PremiumButtonState extends State<PremiumButton> with SingleTickerProvider
     );
   }
 }
+
+
+

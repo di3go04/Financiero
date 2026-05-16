@@ -1,11 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../widgets/debt_simulator.dart';
+import '../../../logic/providers/currency_provider.dart';
+import '../../../logic/providers/user_settings_provider.dart';
 import '../widgets/premium_primitives.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/empty_state.dart';
 
 class GoalsTab extends StatefulWidget {
-  const GoalsTab({super.key});
+  final VoidCallback? onAddGoal;
+  const GoalsTab({super.key, this.onAddGoal});
 
   @override
   State<GoalsTab> createState() => _GoalsTabState();
@@ -13,144 +19,245 @@ class GoalsTab extends StatefulWidget {
 
 class _GoalsTabState extends State<GoalsTab> {
   final _supabase = Supabase.instance.client;
-  bool _isLoading = true;
   List<dynamic> _goals = [];
-  double _reductionFactor = 0.0;
+  bool _isLoading = true;
+  StreamSubscription? _subscription;
+  double _simulationMonthly = 500;
 
   @override
   void initState() {
     super.initState();
-    _fetchGoals();
+    _subscribeToGoals();
   }
 
-  Future<void> _fetchGoals() async {
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToGoals() {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final data = await _supabase.from('savings_goals').select().eq('user_id', userId);
-      setState(() {
-        _goals = data;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
+    final userId = _supabase.auth.currentUser!.id;
+    _subscription = _supabase
+        .from('savings_goals')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .listen((data) {
+      if (mounted) {
+        setState(() {
+          _goals = data;
+          _isLoading = false;
+        });
+      }
+    }, onError: (_) {
+      if (mounted) setState(() => _isLoading = false);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 100, left: 20, right: 20, bottom: 40),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 800),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final currency = Provider.of<CurrencyProvider>(context);
+    final settings = Provider.of<UserSettingsProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 850),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 100, left: 24, right: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(isDark),
+              const SizedBox(height: 32),
+              Expanded(
+                child: _isLoading 
+                  ? _buildLoadingState() 
+                  : (_goals.isEmpty ? _buildEmptyState() : _buildList(currency, settings, isDark)),
+              ),
+              _buildSimulator(currency, isDark),
+            
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Metas de Ahorro', 
+          style: TextStyle(
+            fontSize: 32, 
+            fontWeight: FontWeight.bold, 
+            color: isDark ? AppTheme.textSnow : AppTheme.textSlate
+          )
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Visualiza tu progreso financiero sólido.', 
+          style: TextStyle(color: Colors.grey.shade500, fontSize: 15)
+        ),
+      
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return ListView.builder(
+      itemCount: 3,
+      itemBuilder: (_, __) => const Padding(
+        padding: EdgeInsets.only(bottom: 20),
+        child: SkeletonBox(height: 160, borderRadius: 16),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const PremiumEmptyState(
+      title: 'Sin metas activas',
+      subtitle: 'Comienza a ahorrar para tus sueños.',
+      icon: Icons.track_changes_rounded,
+      actionLabel: 'Nueva Meta',
+      onAction: widget.onAddGoal,
+    );
+  }
+
+  Widget _buildList(CurrencyProvider currency, UserSettingsProvider settings, bool isDark) {
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 24),
+      itemCount: _goals.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final g = _goals[index];
+        final current = (g['current_amount'] ?? 0).toDouble();
+        final target = (g['target_amount'] ?? 1).toDouble();
+        final progress = (current / target).clamp(0.0, 1.0);
+        
+        return SolidCard(
+          borderRadius: 16,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryIndigo
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(g['name' style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        Text(
+                          'Objetivo: ${currency.format(target)}', 
+                          style: TextStyle(color: Colors.grey.shade500, fontSize: 12)
+                        ),
+                      
+                    ),
+                  ),
+                  Text(
+                    '${(progress * 100).toStringAsFixed(0)}%',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppTheme.primaryIndigo),
+                  ),
+                
+              ),
+              const SizedBox(height: 24),
+              // Solid Progress Bar
+              Container(
+                height: 12,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04), 
+                  borderRadius: BorderRadius.circular(6)
+                ),
+                child: Stack(
                   children: [
-                    const Text('Metas de Ahorro', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 24),
-                    GlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Simulador de Ahorro', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          const Text('Si reduces tus gastos hormiga en:', style: TextStyle(color: Colors.grey)),
-                          Slider(
-                            value: _reductionFactor,
-                            onChanged: (v) => setState(() => _reductionFactor = v),
-                            activeColor: AppTheme.primaryCyan,
-                            label: '${(_reductionFactor * 100).toInt()}%',
-                            divisions: 10,
+                    Positioned.fill(
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: progress,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryIndigo
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          TweenAnimationBuilder<double>(
-                            tween: Tween<double>(begin: 0, end: _reductionFactor),
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
-                            builder: (context, value, child) {
-                              final monthsEarlier = value > 0 ? (1 + value * 5).toInt() : 0;
-                              return Column(
-                                children: [
-                                  Text(
-                                    'Â¡LlegarÃ¡s a tus metas $monthsEarlier meses antes!',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryCyan),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  LinearProgressIndicator(
-                                    value: (0.6 + value * 0.4).clamp(0.0, 1.0),
-                                    backgroundColor: Colors.grey.withValues(alpha: 0.1),
-                                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryCyan),
-                                    minHeight: 12,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    const DebtSimulator(),
-                    const SizedBox(height: 32),
-                    const Text('Tus Metas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                    _goals.isEmpty
-                      ? const GlassCard(child: Center(child: Text('No hay metas activas.')))
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _goals.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 16),
-                          itemBuilder: (context, index) {
-                            final g = _goals[index];
-                            return GoalCard(name: g['name'], target: g['target_amount'], current: g['current_amount']);
-                          },
-                        ),
-                  ],
+                  
                 ),
               ),
-            ),
-          );
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ahorrado: ${currency.format(current)}', 
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)
+                  ),
+                  Text(
+                    'Faltan: ${currency.format(target - current)}', 
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13)
+                  ),
+                
+              ),
+            
+          ),
+        );
+      },
+    );
   }
-}
 
-class GoalCard extends StatelessWidget {
-  final String name;
-  final double target;
-  final double current;
-
-  const GoalCard({super.key, required this.name, required this.target, required this.current});
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (current / target).clamp(0.0, 1.0);
-
-    return GlassCard(
+  Widget _buildSimulator(CurrencyProvider currency, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 40),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppTheme.borderDark : AppTheme.borderLight),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const Text('Simulador de Ahorro', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 16),
-          LinearProgressIndicator(
-            value: progress,
-            minHeight: 12,
-            borderRadius: BorderRadius.circular(6),
-            backgroundColor: Colors.grey.withValues(alpha: 0.1),
-            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryCyan),
-          ),
-          const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('${current.toStringAsFixed(0)} â‚¬ ahorrados', style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text('Meta: ${target.toStringAsFixed(0)} â‚¬', style: const TextStyle(color: Colors.grey)),
-            ],
+              Expanded(
+                child: Slider(
+                  value: _simulationMonthly,
+                  min: 0,
+                  max: 5000,
+                  divisions: 50,
+                  activeColor: AppTheme.primaryIndigo
+                  onChanged: (val) => setState(() => _simulationMonthly = val),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                currency.format(_simulationMonthly),
+                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryIndigo),
+              ),
+            
           ),
-        ],
+          Text(
+            'Si ahorras ${currency.format(_simulationMonthly)} al mes, llegarás a tus metas más rápido.',
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+          ),
+        
       ),
     );
   }
 }
+

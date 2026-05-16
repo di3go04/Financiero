@@ -17,16 +17,16 @@ class InsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
+    return SolidCard(
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color,
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Icon(icon, color: color),
+            child: Icon(icon, color: Colors.white),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -36,11 +36,13 @@ class InsightCard extends StatelessWidget {
                 Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 4),
                 Text(description, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13)),
-              ],
+              
             ),
           ),
-        ],
+        
       ),
     );
   }
 }
+
+

@@ -21,8 +21,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       icon: Icons.auto_awesome_rounded,
     ),
     OnboardingData(
-      title: 'ConexiÃ³n Bancaria Segura',
-      description: 'Vincula tus cuentas bancarias de forma segura para tener una visiÃ³n clara de tus finanzas.',
+      title: 'Conexión Bancaria Segura',
+      description: 'Vincula tus cuentas bancarias de forma segura para tener una visión clara de tus finanzas.',
       icon: Icons.account_balance_rounded,
     ),
     OnboardingData(
@@ -60,7 +60,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         height: 8,
                         width: _currentPage == index ? 24 : 8,
                         decoration: BoxDecoration(
-                          color: _currentPage == index ? AppTheme.primaryCyan : Colors.grey.withValues(alpha: 0.3),
+                          color: _currentPage == index ? AppTheme.primaryIndigo : Colors.grey.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -68,10 +68,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                   const SizedBox(height: 48),
                   PremiumButton(
-                    gradient: const [AppTheme.primaryCyan, AppTheme.secondaryBlue],
                     onPressed: () {
                       if (_currentPage < _pages.length - 1) {
-                        _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeOutCubic,
+                        );
                       } else {
                         Navigator.pushNamed(context, '/login');
                       }
@@ -81,7 +83,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       alignment: Alignment.center,
                       child: Text(
                         _currentPage == _pages.length - 1 ? 'Comenzar ahora' : 'Siguiente',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -116,12 +122,10 @@ class OnboardingContent extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.primaryCyan.withValues(alpha: 0.1), AppTheme.secondaryBlue.withValues(alpha: 0.1)],
-              ),
+              color: AppTheme.primaryIndigo.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
-            child: Icon(data.icon, size: 100, color: AppTheme.primaryCyan),
+            child: Icon(data.icon, size: 100, color: AppTheme.primaryIndigo),
           ),
           const SizedBox(height: 48),
           Text(

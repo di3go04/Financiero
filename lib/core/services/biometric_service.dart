@@ -35,3 +35,5 @@ class BiometricService {
     await prefs.setBool(_biometricEnabledKey, enabled);
   }
 }
+
+

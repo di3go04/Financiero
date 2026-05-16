@@ -25,3 +25,5 @@ class FadeSlidePageRoute<T> extends PageRouteBuilder<T> {
           transitionDuration: const Duration(milliseconds: 400),
         );
 }
+
+

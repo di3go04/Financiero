@@ -48,10 +48,12 @@ class FinancialCard extends StatelessWidget {
                   fontSize: 18,
                 ),
               ),
-            ],
+            
           ),
-        ],
+        
       ),
     );
   }
 }
+
+
