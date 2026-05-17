@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/theme/app_theme.dart';
+import '../widgets/premium_primitives.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: isDark ? AppTheme.bgDark : AppTheme.bgLight,
       appBar: AppBar(
         title: const Text('Dashboard'),
         centerTitle: false,
@@ -21,11 +24,11 @@ class DashboardScreen extends StatelessWidget {
             padding: EdgeInsets.only(right: 16),
             child: CircleAvatar(
               radius: 18,
-              backgroundColor: AppTheme.primaryIndigo
+              backgroundColor: AppTheme.primaryBlue,
               child: Icon(Icons.person, color: Colors.white, size: 20),
             ),
           ),
-        
+        ],
       ),
       body: const SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -43,14 +46,14 @@ class DashboardScreen extends StatelessWidget {
             SectionHeader(title: 'Transacciones Recientes'),
             SizedBox(height: 16),
             TransactionList(),
-            SizedBox(height: 100), // Espacio para el FAB
-          
+            SizedBox(height: 100),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {},
-        backgroundColor: AppTheme.primaryIndigo
-        label: const Text('Nueva Transacción', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppTheme.primaryBlue,
+        label: const Text('Nueva Transacción', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         icon: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -62,13 +65,8 @@ class HealthScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-      ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SolidCard(
       child: Row(
         children: [
           SizedBox(
@@ -80,14 +78,14 @@ class HealthScoreCard extends StatelessWidget {
                 CircularProgressIndicator(
                   value: 0.85,
                   strokeWidth: 8,
-                  backgroundColor: Colors.grey.withValues(alpha: 0.1),
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryIndigo),
+                  backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),
                 ),
                 const Text(
                   '85',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-              
+              ],
             ),
           ),
           const SizedBox(width: 20),
@@ -101,13 +99,13 @@ class HealthScoreCard extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Ã‚Â¡Vas por buen camino! Has ahorrado un 15% mÃƒÂ¡s que el mes pasado.',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                  '¡Vas por buen camino! Has ahorrado un 15% más que el mes pasado.',
+                  style: TextStyle(color: AppTheme.textDim, fontSize: 13),
                 ),
-              
+              ],
             ),
           ),
-        
+        ],
       ),
     );
   }
@@ -121,19 +119,15 @@ class BalanceCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.primaryIndigo AppTheme.expenseCoral
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppTheme.primaryBlue,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryIndigo.withValues(alpha: 0.3),
+            color: AppTheme.primaryBlue.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
-        
+        ],
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,9 +161,9 @@ class BalanceCard extends StatelessWidget {
                 icon: Icons.arrow_downward_rounded,
                 color: Colors.white,
               ),
-            
+            ],
           ),
-        
+        ],
       ),
     );
   }
@@ -206,9 +200,9 @@ class _BalanceInfo extends StatelessWidget {
           children: [
             Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
             Text(amount, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          
+          ],
         ),
-      
+      ],
     );
   }
 }
@@ -228,9 +222,9 @@ class SectionHeader extends StatelessWidget {
         ),
         TextButton(
           onPressed: () {},
-          child: const Text('Ver todo'),
+          child: const Text('Ver todo', style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold)),
         ),
-      
+      ],
     );
   }
 }
@@ -240,54 +234,45 @@ class CategoryChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 200,
+    return SolidCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+      child: SizedBox(
+        height: 200,
+        child: PieChart(
+          PieChartData(
+            sectionsSpace: 0,
+            centerSpaceRadius: 40,
+            sections: [
+              PieChartSectionData(
+                color: AppTheme.primaryBlue,
+                value: 40,
+                title: 'Vivienda',
+                radius: 50,
+                titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              PieChartSectionData(
+                color: AppTheme.expenseRed,
+                value: 30,
+                title: 'Comida',
+                radius: 50,
+                titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              PieChartSectionData(
+                color: AppTheme.accentAmber,
+                value: 15,
+                title: 'Ocio',
+                radius: 50,
+                titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              PieChartSectionData(
+                color: AppTheme.primarySlate,
+                value: 15,
+                title: 'Otros',
+                radius: 50,
+                titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ],
           ),
-        
-      ),
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 0,
-          centerSpaceRadius: 40,
-          sections: [
-            PieChartSectionData(
-              color: AppTheme.primaryIndigo
-              value: 40,
-              title: 'Vivienda',
-              radius: 50,
-              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            PieChartSectionData(
-              color: AppTheme.expenseCoral,
-              value: 30,
-              title: 'Comida',
-              radius: 50,
-              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            PieChartSectionData(
-              color: Colors.orange,
-              value: 15,
-              title: 'Ocio',
-              radius: 50,
-              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            PieChartSectionData(
-              color: Colors.purple,
-              value: 15,
-              title: 'Otros',
-              radius: 50,
-              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-          
         ),
       ),
     );
@@ -307,21 +292,17 @@ class TransactionList extends StatelessWidget {
       itemBuilder: (context, index) {
         return const ListTile(
           leading: CircleAvatar(
-            backgroundColor: Color(0xFFF1F5F9),
-            child: Icon(Icons.shopping_bag_outlined, color: AppTheme.textDark),
+            backgroundColor: AppTheme.primarySlate,
+            child: Icon(Icons.shopping_bag_outlined, color: Colors.white),
           ),
           title: Text('Mercadona Supermercado', style: TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text('14 Mayo, 2026 Ã¢â‚¬Â¢ Comida'),
+          subtitle: Text('14 Mayo, 2026 • Comida'),
           trailing: Text(
             '- \$45,60',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
+            style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.expenseRed),
           ),
         );
       },
     );
   }
 }
-
-
-
-

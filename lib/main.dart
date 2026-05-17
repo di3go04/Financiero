@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
+import 'ui/screens/splash/splash_screen.dart';
+import 'ui/screens/landing/landing_page.dart';
 import 'ui/screens/onboarding/onboarding_screen.dart';
 import 'logic/blocs/auth/auth_bloc.dart' hide AuthState;
 import 'ui/screens/auth/login_screen.dart';
@@ -11,12 +13,18 @@ import 'ui/screens/auth/register_screen.dart';
 import 'logic/providers/theme_provider.dart';
 import 'logic/providers/currency_provider.dart';
 import 'logic/providers/user_settings_provider.dart';
+import 'logic/providers/transaction_provider.dart';
 import 'ui/screens/main/main_shell.dart';
 import 'ui/screens/settings/settings_screen.dart';
 import 'core/utils/page_transitions.dart';
 
+import 'package:hive_flutter/hive_flutter.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter();
+  await Hive.openBox('offline_transactions');
 
   await Supabase.initialize(
     url: 'https://fkachqhhpbijqerhubzi.supabase.co',
@@ -29,21 +37,22 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => CurrencyProvider()),
         ChangeNotifierProvider(create: (_) => UserSettingsProvider()),
+        ChangeNotifierProvider(create: (_) => TransactionProvider()),
         BlocProvider(create: (context) => AuthBloc()),
       ],
-      child: const FinWiseApp(),
+      child: const ProsperApp(),
     ),
   );
 }
 
-class FinWiseApp extends StatefulWidget {
-  const FinWiseApp({super.key});
+class ProsperApp extends StatefulWidget {
+  const ProsperApp({super.key});
 
   @override
-  State<FinWiseApp> createState() => _FinWiseAppState();
+  State<ProsperApp> createState() => _ProsperAppState();
 }
 
-class _FinWiseAppState extends State<FinWiseApp> {
+class _ProsperAppState extends State<ProsperApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   late final StreamSubscription<AuthState> _authSubscription;
 
@@ -85,11 +94,17 @@ class _FinWiseAppState extends State<FinWiseApp> {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: themeProvider.themeMode,
-        initialRoute: Supabase.instance.client.auth.currentUser != null ? '/dashboard' : '/',
+        initialRoute: '/',
         onGenerateRoute: (settings) {
           Widget page;
           switch (settings.name) {
             case '/':
+              page = const SplashScreen();
+              break;
+            case '/landing':
+              page = const LandingPage();
+              break;
+            case '/onboarding':
               page = const OnboardingScreen();
               break;
             case '/login':
@@ -105,7 +120,7 @@ class _FinWiseAppState extends State<FinWiseApp> {
               page = const SettingsScreen();
               break;
             default:
-              page = const OnboardingScreen();
+              page = const LandingPage();
           }
           return FadeSlidePageRoute(child: page);
         },

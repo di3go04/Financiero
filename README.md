@@ -1,6 +1,6 @@
-# Financiero - App de Gestión Financiera Personal
+# Prosper - App de Gestión Financiera Personal
 
-Financiero es una aplicación móvil moderna y minimalista para la gestión de finanzas personales, construida con **Flutter** y **Supabase**.
+Prosper es una aplicación móvil moderna y minimalista para la gestión de finanzas personales, construida con **Flutter** y **Supabase**.
 
 ## Características (MVP)
 

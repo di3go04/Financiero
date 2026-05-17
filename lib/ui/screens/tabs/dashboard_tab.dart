@@ -2,12 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../logic/providers/currency_provider.dart';
 import '../../../logic/providers/user_settings_provider.dart';
+import '../../../logic/providers/transaction_provider.dart';
 import '../widgets/skeleton_loader.dart';
-import '../widgets/insight_card.dart';
 import '../widgets/premium_primitives.dart';
+import '../widgets/prosper_empty_state.dart';
 
 class DashboardTab extends StatefulWidget {
   const DashboardTab({super.key});
@@ -16,240 +18,372 @@ class DashboardTab extends StatefulWidget {
   State<DashboardTab> createState() => _DashboardTabState();
 }
 
-class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderStateMixin {
+class _DashboardTabState extends State<DashboardTab> {
   final _supabase = Supabase.instance.client;
-  double _balance = 0;
-  double _income = 0;
-  double _expenses = 0;
-  List<dynamic> _recentTransactions = [];
-  bool _isLoading = true;
-  StreamSubscription? _subscription;
-  late AnimationController _fadeController;
-
-  @override
-  void initState() {
-    super.initState();
-    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _subscribeToDashboardData();
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _subscription?.cancel();
-    super.dispose();
-  }
-
-  void _subscribeToDashboardData() {
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-    final userId = _supabase.auth.currentUser!.id;
-    _subscription = _supabase
-        .from('transactions')
-        .stream(primaryKey: ['id'])
-        .eq('user_id', userId)
-        .listen((data) {
-      if (mounted) {
-        double inc = 0;
-        double exp = 0;
-        for (var tx in data) {
-          final amt = (tx['amount'] as num).toDouble();
-          if (tx['type'] == 'income') {
-            inc += amt;
-          } else {
-            exp += amt;
-          }
-        }
-        setState(() {
-          _income = inc;
-          _expenses = exp;
-          _balance = inc - exp;
-          _recentTransactions = data.take(5).toList();
-          _isLoading = false;
-        });
-        _fadeController.forward();
-      }
-    }, onError: (_) {
-      if (mounted) setState(() => _isLoading = false);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
+    final transactionProvider = Provider.of<TransactionProvider>(context);
     final currency = Provider.of<CurrencyProvider>(context);
     final settings = Provider.of<UserSettingsProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isDesktop = MediaQuery.of(context).size.width > 768;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 80, left: 24, right: 24, bottom: 40),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1000),
-          child: FadeTransition(
-            opacity: _fadeController,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildGreeting(isDark),
-                const SizedBox(height: 32),
-                _buildSummaryCards(currency, settings, isDesktop, isDark),
-                const SizedBox(height: 40),
-                _buildSectionHeader('Análisis Inteligente', isDark),
-                const SizedBox(height: 16),
-                _buildInsights(isDesktop),
-                const SizedBox(height: 40),
-                _buildSectionHeader('Movimientos Recientes', isDark),
-                const SizedBox(height: 16),
-                _buildRecentTransactions(currency, settings, isDark),
-              ],
-            ),
-          ),
-        ),
-      ),
+    if (transactionProvider.isLoading) return const DashboardSkeleton();
+
+    // Calculate monthly metrics from provider data
+    double inc = 0, exp = 0, prevInc = 0, prevExp = 0;
+    final now = DateTime.now();
+    final currentMonth = now.month;
+    final currentYear = now.year;
+    final lastMonth = currentMonth == 1 ? 12 : currentMonth - 1;
+    final lastMonthYear = currentMonth == 1 ? currentYear - 1 : currentYear;
+
+    for (final tx in transactionProvider.transactions) {
+      final amt = (tx['amount'] as num).toDouble();
+      final date = DateTime.parse(tx['date']);
+      
+      if (date.month == currentMonth && date.year == currentYear) {
+        if (tx['type'] == 'income') { inc += amt; } else { exp += amt; }
+      } else if (date.month == lastMonth && date.year == lastMonthYear) {
+        if (tx['type'] == 'income') { prevInc += amt; } else { prevExp += amt; }
+      }
+    }
+
+    final balance = inc - exp;
+    final prevMonthBalance = prevInc - prevExp;
+    final recentTransactions = transactionProvider.transactions.take(5).toList();
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: transactionProvider.isLoading && transactionProvider.transactions.isEmpty
+          ? const DashboardSkeleton(key: ValueKey('loading'))
+          : transactionProvider.errorMessage != null
+              ? _ErrorState(
+                  key: const ValueKey('error'),
+                  message: transactionProvider.errorMessage!,
+                  onRetry: transactionProvider.refresh,
+                )
+              : SingleChildScrollView(
+                  key: const ValueKey('content'),
+                  padding: const EdgeInsets.only(top: 80, left: 24, right: 24, bottom: 40),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1100),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _GreetingSection(
+                            name: Supabase.instance.client.auth.currentUser?.userMetadata?['full_name'] ?? 'Usuario',
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 32),
+                          _MainMetrics(
+                            balance: balance,
+                            income: inc,
+                            expenses: exp,
+                            prevMonthBalance: prevMonthBalance,
+                            currency: currency,
+                            settings: settings,
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 40),
+                          _SmallMetricsRow(
+                            income: inc,
+                            expenses: exp,
+                            currency: currency,
+                            settings: settings,
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 40),
+                          Text(
+                            'Movimientos Recientes',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppTheme.textSnow : AppTheme.textSlate,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _RecentTransactionsList(
+                            transactions: recentTransactions,
+                            currency: currency,
+                            settings: settings,
+                            isDark: isDark,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
     );
   }
+}
 
-  Widget _buildGreeting(bool isDark) {
-    final name = _supabase.auth.currentUser?.userMetadata?['full_name'] ?? 'Usuario';
+// ... inside DashboardTab ...
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({super.key, required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return ProsperEmptyState(
+      title: '¡Oops! Algo salió mal',
+      description: message,
+      buttonLabel: 'Reintentar ahora',
+      icon: Icons.cloud_off_rounded,
+      onAction: onRetry,
+    );
+  }
+}
+
+
+// --- Extracted const-friendly sub-widgets ---
+
+class _GreetingSection extends StatelessWidget {
+  final String name;
+  final bool isDark;
+  const _GreetingSection({required this.name, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          'Resumen Prosper',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.primaryBlue,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 4),
         Text(
-          'Hola, $name',
+          'Hola de nuevo, $name',
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
             color: isDark ? AppTheme.textSnow : AppTheme.textSlate,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Aquí tienes tu resumen financiero de hoy.',
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
-        ),
       ],
     );
   }
+}
 
-  Widget _buildSummaryCards(CurrencyProvider currency, UserSettingsProvider settings, bool isDesktop, bool isDark) {
+class _MainMetrics extends StatelessWidget {
+  final double balance, income, expenses, prevMonthBalance;
+  final CurrencyProvider currency;
+  final UserSettingsProvider settings;
+  final bool isDark;
+
+  const _MainMetrics({
+    required this.balance,
+    required this.income,
+    required this.expenses,
+    required this.prevMonthBalance,
+    required this.currency,
+    required this.settings,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final diff = balance - prevMonthBalance;
+    final percent = prevMonthBalance == 0 ? 100.0 : (diff / prevMonthBalance.abs()) * 100;
+    final isPositive = percent >= 0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
+    return SolidCard(
+      padding: const EdgeInsets.all(32),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Balance Neto del Mes', style: TextStyle(color: AppTheme.textDim, fontSize: 16)),
+                const SizedBox(height: 8),
+                Text(
+                  settings.isPrivacyMode ? '••••' : currency.format(balance),
+                  style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(
+                      isPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                      color: isPositive ? AppTheme.successBlue : AppTheme.expenseRed,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${percent.toStringAsFixed(1)}% vs mes anterior',
+                      style: TextStyle(
+                        color: isPositive ? AppTheme.successBlue : AppTheme.expenseRed,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (screenWidth > 600)
+            SizedBox(
+              width: 120,
+              height: 120,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 0,
+                  centerSpaceRadius: 35,
+                  sections: [
+                    PieChartSectionData(value: income.abs(), color: AppTheme.successBlue, radius: 15, showTitle: false),
+                    PieChartSectionData(value: expenses.abs(), color: AppTheme.expenseRed, radius: 15, showTitle: false),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SmallMetricsRow extends StatelessWidget {
+  final double income, expenses;
+  final CurrencyProvider currency;
+  final UserSettingsProvider settings;
+  final bool isDark;
+
+  const _SmallMetricsRow({
+    required this.income,
+    required this.expenses,
+    required this.currency,
+    required this.settings,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < 850;
     final cards = [
-      _buildValueCard('Balance Total', _balance, AppTheme.primaryIndigo, Icons.account_balance_wallet_rounded, currency, settings, isDark),
-      _buildValueCard('Ingresos', _income, AppTheme.incomeTeal, Icons.arrow_upward_rounded, currency, settings, isDark),
-      _buildValueCard('Gastos', _expenses, AppTheme.expenseRose, Icons.arrow_downward_rounded, currency, settings, isDark),
+      _SmallMetricCard(title: 'Ingresos Totales', value: income, color: AppTheme.successBlue, icon: Icons.add_circle_outline_rounded, currency: currency, settings: settings),
+      _SmallMetricCard(title: 'Gastos Totales', value: expenses, color: AppTheme.expenseRed, icon: Icons.remove_circle_outline_rounded, currency: currency, settings: settings),
+      _SmallMetricCard(title: 'Ahorro Neto', value: income - expenses, color: AppTheme.primaryBlue, icon: Icons.savings_outlined, currency: currency, settings: settings),
     ];
 
-    if (isDesktop) {
-      return SizedBox(
-        height: 160,
-        child: Row(
-          children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: c))).toList(),
-        ),
-      );
-    } else {
-      return SizedBox(
-        height: 140,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: cards.map((c) => SizedBox(width: 280, child: Padding(padding: const EdgeInsets.only(right: 16), child: c))).toList(),
-        ),
-      );
+    if (isMobile) {
+      return Column(children: cards.map((c) => Padding(padding: const EdgeInsets.only(bottom: 16), child: c)).toList());
     }
-  }
 
-  Widget _buildValueCard(String title, double value, Color color, IconData icon, CurrencyProvider currency, UserSettingsProvider settings, bool isDark) {
+    return Row(
+      children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: c))).toList(),
+    );
+  }
+}
+
+class _SmallMetricCard extends StatelessWidget {
+  final String title;
+  final double value;
+  final Color color;
+  final IconData icon;
+  final CurrencyProvider currency;
+  final UserSettingsProvider settings;
+
+  const _SmallMetricCard({
+    required this.title,
+    required this.value,
+    required this.color,
+    required this.icon,
+    required this.currency,
+    required this.settings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return SolidCard(
+      padding: const EdgeInsets.all(20),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Text(title, style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, color: color, size: 20),
           ),
-          const Spacer(),
+          const SizedBox(height: 16),
+          Text(title, style: const TextStyle(color: AppTheme.textDim, fontSize: 13)),
+          const SizedBox(height: 4),
           Text(
             settings.isPrivacyMode ? '••••' : currency.format(value),
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildSectionHeader(String title, bool isDark) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        color: isDark ? AppTheme.textSnow : AppTheme.textSlate,
-      ),
-    );
-  }
+class _RecentTransactionsList extends StatelessWidget {
+  final List<dynamic> transactions;
+  final CurrencyProvider currency;
+  final UserSettingsProvider settings;
+  final bool isDark;
 
-  Widget _buildInsights(bool isDesktop) {
-    final insights = [
-      const InsightCard(
-        title: 'Ahorro Positivo',
-        description: 'Has ahorrado un 15% más que el mes pasado.',
-        icon: Icons.trending_up_rounded,
-        color: AppTheme.incomeTeal,
-      ),
-      const InsightCard(
-        title: 'Meta en Camino',
-        description: 'Estás cerca de lograr tu meta de ahorro.',
-        icon: Icons.auto_awesome_rounded,
-        color: AppTheme.primaryIndigo,
-      ),
-    ];
+  const _RecentTransactionsList({
+    required this.transactions,
+    required this.currency,
+    required this.settings,
+    required this.isDark,
+  });
 
-    return isDesktop
-        ? Row(children: insights.map((i) => Expanded(child: Padding(padding: const EdgeInsets.only(right: 16), child: i))).toList())
-        : Column(children: insights.map((i) => Padding(padding: const EdgeInsets.only(bottom: 12), child: i)).toList());
-  }
-
-  Widget _buildRecentTransactions(CurrencyProvider currency, UserSettingsProvider settings, bool isDark) {
-    if (_isLoading) {
-      return Column(children: List.generate(3, (index) => const Padding(padding: EdgeInsets.only(bottom: 12), child: SkeletonBox(height: 70, borderRadius: 12))));
-    }
-
-    if (_recentTransactions.isEmpty) {
+  @override
+  Widget build(BuildContext context) {
+    if (transactions.isEmpty) {
       return const SolidCard(child: Center(child: Text('No hay movimientos recientes.')));
     }
 
-    return Column(
-      children: _recentTransactions.map((tx) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: transactions.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final tx = transactions[index];
         final isExpense = tx['type'] == 'expense';
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: SolidCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: AppTheme.categoryColor(tx['category']).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                  child: Icon(isExpense ? Icons.shopping_bag_outlined : Icons.payments_outlined, color: AppTheme.categoryColor(tx['category']), size: 20),
+        final color = AppTheme.categoryColor(tx['category'] ?? '');
+        return SolidCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: Icon(isExpense ? Icons.shopping_bag_outlined : Icons.payments_outlined, color: color, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(tx['description'] ?? tx['category'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(tx['category'] ?? 'General', style: const TextStyle(color: AppTheme.textDim, fontSize: 11)),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(child: Text(tx['description'] ?? tx['category'], style: const TextStyle(fontWeight: FontWeight.w600))),
-                Text(
-                  settings.isPrivacyMode ? '••••' : '${isExpense ? "-" : "+"} ${currency.format((tx['amount'] as num).toDouble())}',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: isExpense ? AppTheme.expenseRose : AppTheme.incomeTeal),
-                ),
-              ],
-            ),
+              ),
+              Text(
+                settings.isPrivacyMode ? '••••' : '${isExpense ? "-" : "+"} ${currency.format((tx['amount'] as num).toDouble())}',
+                style: TextStyle(fontWeight: FontWeight.bold, color: isExpense ? AppTheme.expenseRed : AppTheme.successBlue),
+              ),
+            ],
           ),
         );
-      }).toList(),
+      },
     );
   }
 }

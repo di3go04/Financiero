@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen>
     super.initState();
     _logoController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
   }
 
@@ -40,6 +40,11 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _signIn() async {
     if (!mounted) return;
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showError('Por favor completa todos los campos');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       await _supabase.auth.signInWithPassword(
@@ -48,20 +53,21 @@ class _LoginScreenState extends State<LoginScreen>
       );
       if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppTheme.expenseCoral,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
-          ),
-        );
-      }
+      if (mounted) _showError(e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppTheme.expenseRed,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
   }
 
   @override
@@ -76,227 +82,128 @@ class _LoginScreenState extends State<LoginScreen>
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: SolidCard(
-                borderRadius: 24,
-                padding: const EdgeInsets.all(36),
+                borderRadius: 32,
+                padding: const EdgeInsets.all(40),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── Logo ──────────────────────────────────────────
                     Center(
                       child: ScaleTransition(
-                        scale: Tween(begin: 1.0, end: 1.06).animate(
-                          CurvedAnimation(
-                              parent: _logoController,
-                              curve: Curves.easeInOut),
+                        scale: Tween(begin: 1.0, end: 1.1).animate(
+                          CurvedAnimation(parent: _logoController, curve: Curves.easeInOut),
                         ),
                         child: Container(
-                          width: 72,
-                          height: 72,
+                          width: 80,
+                          height: 80,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                AppTheme.primaryIndigo
-                                
-                              
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(22),
+                            color: AppTheme.primaryBlue,
+                            borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: AppTheme.primaryIndigo
-                                    .withValues(alpha: 0.35),
-                                blurRadius: 24,
-                                offset: const Offset(0, 8),
+                                color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                                blurRadius: 30,
+                                offset: const Offset(0, 10),
                               ),
-                            
+                            ],
                           ),
-                          child: const Icon(
-                            Icons.account_balance_wallet_rounded,
-                            size: 36,
-                            color: Colors.white,
-                          ),
+                          child: const Icon(Icons.account_balance_wallet_rounded, size: 40, color: Colors.white),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // ── Title ─────────────────────────────────────────
+                    const SizedBox(height: 32),
                     Center(
                       child: Text(
                         'Prosper',
                         style: GoogleFonts.inter(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: isDark ? Colors.white : AppTheme.textSlate,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1,
+                          color: isDark ? AppTheme.textSnow : AppTheme.textSlate,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Center(
+                    const SizedBox(height: 8),
+                    const Center(
                       child: Text(
-                        'Inicia sesión para continuar',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : AppTheme.textSlate,
-                          height: 1.5,
-                        ),
+                        'Tu plataforma financiera inteligente',
+                        style: TextStyle(color: AppTheme.textDim, fontSize: 14),
                       ),
                     ),
-                    const SizedBox(height: 36),
-
-                    // ── Email field ───────────────────────────────────
+                    const SizedBox(height: 40),
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: isDark ? Colors.white : AppTheme.textSlate,
-                      ),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Correo electrónico',
-                        labelStyle: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : AppTheme.textSlate,
-                        ),
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        prefixIcon: Icon(Icons.email_outlined),
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // ── Password field ────────────────────────────────
                     TextField(
                       controller: _passwordController,
                       obscureText: !_showPassword,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: isDark ? Colors.white : AppTheme.textSlate,
-                      ),
                       onSubmitted: (_) => _signIn(),
                       decoration: InputDecoration(
                         labelText: 'Contraseña',
-                        labelStyle: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : AppTheme.textSlate,
-                        ),
                         prefixIcon: const Icon(Icons.lock_outline_rounded),
                         suffixIcon: IconButton(
-                          icon: Icon(
-                            _showPassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                          ),
-                          onPressed: () =>
-                              setState(() => _showPassword = !_showPassword),
+                          icon: Icon(_showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                          onPressed: () => setState(() => _showPassword = !_showPassword),
                         ),
                       ),
                     ),
-
-                    // ── Forgot password ───────────────────────────────
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () {},
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 8),
-                        ),
-                        child: Text(
-                          '¿Olvidaste tu contraseña?',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.primaryIndigo
-                          ),
-                        ),
+                        child: const Text('¿Olvidaste tu contraseña?', style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold)),
                       ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // ── Login button ──────────────────────────────────
+                    const SizedBox(height: 24),
                     _isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.primaryIndigo),
-                            ),
-                          )
+                        ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
                         : PremiumButton(
                             onPressed: _signIn,
                             child: Container(
-                              height: 52,
+                              height: 56,
                               alignment: Alignment.center,
-                              child: Text(
-                                'Entrar',
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                  letterSpacing: 0.3,
-                                ),
+                              child: const Text(
+                                'Iniciar Sesión',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                               ),
                             ),
                           ),
-                    const SizedBox(height: 20),
-
-                    // ── Divider ───────────────────────────────────────
-                    Row(children: [
-                      const Expanded(
-                          child: Divider(endIndent: 12, height: 1)),
-                      Text(
-                        'o',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: isDark
-                              ? const Color(0xFF64748B)
-                              : AppTheme.textSlate,
+                    const SizedBox(height: 24),
+                    const Row(
+                      children: [
+                        Expanded(child: Divider()),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text('o', style: TextStyle(color: AppTheme.textDim)),
                         ),
-                      ),
-                      const Expanded(
-                          child: Divider(indent: 12, height: 1)),
-                    ]),
-                    const SizedBox(height: 16),
-
-                    // ── Register link ─────────────────────────────────
+                        Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                     Center(
                       child: TextButton(
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/register'),
+                        onPressed: () => Navigator.pushNamed(context, '/register'),
                         child: RichText(
                           text: TextSpan(
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : AppTheme.textSlate,
-                            ),
-                            children: [
-                              const TextSpan(text: '¿No tienes cuenta? '),
+                            style: TextStyle(color: isDark ? AppTheme.textSnow : AppTheme.textSlate, fontSize: 14),
+                            children: const [
+                              TextSpan(text: '¿No tienes cuenta? '),
                               TextSpan(
                                 text: 'Regístrate',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.primaryIndigo
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primaryBlue),
                               ),
-                            
+                            ],
                           ),
                         ),
                       ),
                     ),
-                  
+                  ],
                 ),
               ),
             ),
@@ -306,5 +213,3 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 }
-
-

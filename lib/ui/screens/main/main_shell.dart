@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../logic/providers/theme_provider.dart';
 import '../../../logic/providers/currency_provider.dart';
 import '../../../logic/providers/user_settings_provider.dart';
+import '../../../logic/providers/transaction_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/shortcuts.dart';
 import '../tabs/dashboard_tab.dart';
 import '../tabs/transactions_tab.dart';
 import '../tabs/budgets_tab.dart';
 import '../tabs/goals_tab.dart';
-import '../tabs/alerts_tab.dart';
+import '../tabs/intelligence_tab.dart';
 import '../widgets/premium_primitives.dart';
 import '../widgets/smart_fab.dart';
 import '../widgets/transaction_form.dart';
@@ -48,7 +50,7 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
       const TransactionsTab(),
       BudgetsTab(onAddBudget: () => _openBudgetForm()),
       GoalsTab(onAddGoal: () => _openGoalForm()),
-      const AlertsTab(),
+      const IntelligenceTab(),
     ];
     _sidebarController = AnimationController(
       vsync: this,
@@ -59,6 +61,23 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
       parent: _sidebarController,
       curve: Curves.easeInOut,
     );
+    _loadSelectedIndex();
+  }
+
+  Future<void> _loadSelectedIndex() async {
+    final prefs = await SharedPreferences.getInstance();
+    final idx = prefs.getInt('last_selected_index') ?? 0;
+    if (mounted && idx != _selectedIndex) {
+      setState(() => _selectedIndex = idx);
+    }
+  }
+
+  Future<void> _onItemTapped(int index) async {
+    setState(() {
+      _selectedIndex = index;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('last_selected_index', index);
   }
 
   @override
@@ -81,33 +100,31 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
     final themeProvider = Provider.of<ThemeProvider>(context);
     final currencyProvider = Provider.of<CurrencyProvider>(context);
     final userSettings = Provider.of<UserSettingsProvider>(context);
-    final isDesktop = MediaQuery.of(context).size.width > 768;
+    final isDesktop = MediaQuery.sizeOf(context).width > 768;
     final isDark = themeProvider.themeMode == ThemeMode.dark;
 
     return GlobalShortcuts(
       onToggleSidebar: isDesktop ? _toggleSidebar : null,
-      onSearch: () => setState(() => _selectedIndex = 1),
+      onSearch: () => _onItemTapped(1),
       child: Scaffold(
         extendBodyBehindAppBar: false,
-        appBar: _buildAppBar(themeProvider, currencyProvider, userSettings),
-        body: ResponsiveBackground(
-          child: Row(
-            children: [
-              if (isDesktop) _buildDesktopSidebar(isDark),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: _tabs[_selectedIndex
-                ),
+        appBar: _buildAppBar(themeProvider, currencyProvider, userSettings, context),
+        body: Row(
+          children: [
+            if (isDesktop) _buildDesktopSidebar(isDark),
+            Expanded(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: _tabs,
               ),
-            
-          ),
+            ),
+          ],
         ),
-        floatingActionButton: _selectedIndex == 0 ? SmartFAB(
+        floatingActionButton: SmartFAB(
           onAddTransaction: () => _openTransactionForm(),
           onAddBudget: () => _openBudgetForm(),
           onAddGoal: () => _openGoalForm(),
-        ) : null,
+        ),
         bottomNavigationBar: !isDesktop ? _buildBottomNav(isDark) : null,
       ),
     );
@@ -144,7 +161,9 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
     ThemeProvider themeProvider,
     CurrencyProvider currencyProvider,
     UserSettingsProvider userSettings,
+    BuildContext context,
   ) {
+    final transactionProvider = Provider.of<TransactionProvider>(context);
     final isDark = themeProvider.themeMode == ThemeMode.dark;
     final bg = isDark ? AppTheme.surfaceDark : Colors.white;
     final borderColor = isDark ? AppTheme.borderDark : AppTheme.borderLight;
@@ -159,12 +178,12 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
         padding: const EdgeInsets.only(left: 8.0),
         child: Row(
           children: [
-            if (MediaQuery.of(context).size.width > 768)
+            if (MediaQuery.sizeOf(context).width > 768)
               IconButton(
                 icon: AnimatedIcon(
                   icon: AnimatedIcons.menu_close,
                   progress: _sidebarAnim,
-                  color: AppTheme.primaryIndigo
+                  color: AppTheme.primaryBlue,
                 ),
                 onPressed: _toggleSidebar,
               ),
@@ -172,7 +191,7 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppTheme.primaryIndigo
+                color: AppTheme.primaryBlue,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 20),
@@ -186,7 +205,24 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
                 color: isDark ? AppTheme.textSnow : AppTheme.textSlate,
               ),
             ),
-          
+            const Spacer(),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Text('Saldo Total', style: TextStyle(color: AppTheme.textDim, fontSize: 10, fontWeight: FontWeight.bold)),
+                Text(
+                  userSettings.isPrivacyMode ? '••••' : currencyProvider.format(transactionProvider.totalBalance),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    color: transactionProvider.totalBalance >= 0 ? AppTheme.successBlue : AppTheme.expenseRed,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 16),
+          ],
         ),
       ),
       actions: [
@@ -194,7 +230,7 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
         const SizedBox(width: 12),
         _ProfileMenu(themeProvider: themeProvider, userSettings: userSettings),
         const SizedBox(width: 16),
-      
+      ],
     );
   }
 
@@ -223,12 +259,12 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
                       label: item['label'] as String,
                       isSelected: _selectedIndex == index,
                       isExpanded: _sidebarAnim.value > 0.5,
-                      onTap: () => setState(() => _selectedIndex = index),
+                      onTap: () => _onItemTapped(index),
                     );
                   },
                 ),
               ),
-            
+            ],
           ),
         );
       },
@@ -251,20 +287,20 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
           final item = _navItems[index];
           final isSelected = _selectedIndex == index;
           return GestureDetector(
-            onTap: () => setState(() => _selectedIndex = index),
+            onTap: () => _onItemTapped(index),
             behavior: HitTestBehavior.opaque,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   item['icon'] as IconData,
-                  color: isSelected ? AppTheme.primaryIndigo : Colors.grey,
+                  color: isSelected ? AppTheme.primaryBlue : Colors.grey,
                   size: 24,
                 ),
                 const SizedBox(height: 4),
                 if (isSelected)
-                  Container(width: 4, height: 4, decoration: const BoxDecoration(color: AppTheme.primaryIndigo shape: BoxShape.circle)),
-              
+                  Container(width: 4, height: 4, decoration: const BoxDecoration(color: AppTheme.primaryBlue, shape: BoxShape.circle)),
+              ],
             ),
           );
         }),
@@ -312,7 +348,7 @@ class _SidebarItemState extends State<_SidebarItem> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: widget.isSelected 
-                ? AppTheme.primaryIndigo 
+                ? AppTheme.primaryBlue 
                 : (_hovered ? (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)) : Colors.transparent),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -320,7 +356,7 @@ class _SidebarItemState extends State<_SidebarItem> {
             children: [
               Icon(
                 widget.icon, 
-                color: widget.isSelected ? Colors.white : (active ? AppTheme.primaryIndigo : Colors.grey), 
+                color: widget.isSelected ? Colors.white : (active ? AppTheme.primaryBlue : Colors.grey), 
                 size: 22
               ),
               if (widget.isExpanded) ...[
@@ -335,8 +371,8 @@ class _SidebarItemState extends State<_SidebarItem> {
                     fontSize: 14,
                   ),
                 ),
-              
-            
+              ],
+            ],
           ),
         ),
       ),
@@ -362,18 +398,19 @@ class _ProfileMenu extends StatelessWidget {
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.primaryIndigo width: 1.5),
+          border: Border.all(color: AppTheme.primaryBlue, width: 1.5),
         ),
         child: const CircleAvatar(
           radius: 16,
           backgroundColor: Colors.transparent,
-          child: Icon(Icons.person_rounded, color: AppTheme.primaryIndigo size: 20),
+          child: Icon(Icons.person_rounded, color: AppTheme.primaryBlue, size: 20),
         ),
       ),
       itemBuilder: (context) => <PopupMenuEntry>[
         PopupMenuItem(
           onTap: () => userSettings.togglePrivacyMode(),
           child: const Row(children: [
+            Icon(Icons.visibility_off_rounded, size: 18),
             SizedBox(width: 12),
             Text('Modo Incógnito'),
           ]),
@@ -388,14 +425,17 @@ class _ProfileMenu extends StatelessWidget {
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
-          onTap: () => Supabase.instance.client.auth.signOut(),
+          onTap: () {
+             Supabase.instance.client.auth.signOut();
+             Navigator.pushReplacementNamed(context, '/login');
+          },
           child: const Row(children: [
-            Icon(Icons.logout_rounded, color: AppTheme.expenseRose, size: 18),
+            Icon(Icons.logout_rounded, color: AppTheme.expenseRed, size: 18),
             SizedBox(width: 12),
-            Text('Cerrar Sesión', style: TextStyle(color: AppTheme.expenseRose, fontWeight: FontWeight.bold)),
+            Text('Cerrar Sesión', style: TextStyle(color: AppTheme.expenseRed, fontWeight: FontWeight.bold)),
           ]),
         ),
-      
+      ],
     );
   }
 }
@@ -422,11 +462,11 @@ class _CurrencySwitcher extends StatelessWidget {
           children: [
             Text(
               provider.label, 
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.black : Colors.white)
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.arrow_drop_down, size: 18),
-          
+            Icon(Icons.arrow_drop_down, size: 18, color: isDark ? Colors.black : Colors.white),
+          ],
         ),
       ),
       onSelected: (c) => provider.setCurrency(c),
@@ -437,4 +477,3 @@ class _CurrencySwitcher extends StatelessWidget {
     );
   }
 }
-

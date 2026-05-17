@@ -15,14 +15,14 @@ class SubscriptionDetector extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.subscriptions_rounded, color: AppTheme.expenseCoral, size: 20),
+              Icon(Icons.subscriptions_rounded, color: AppTheme.expenseRed, size: 20),
               SizedBox(width: 10),
               Text('Posibles Suscripciones', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            
+            ],
           ),
           const SizedBox(height: 16),
           if (transactions.isEmpty)
-            const Text('No se detectaron suscripciones este mes.', style: TextStyle(color: Colors.grey, fontSize: 13))
+            const Text('No se detectaron suscripciones este mes.', style: TextStyle(color: AppTheme.textDim, fontSize: 13))
           else
             Column(
               children: transactions.where((tx) => tx['amount'] > 5 && tx['amount'] < 50).map((tx) {
@@ -31,19 +31,15 @@ class SubscriptionDetector extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(tx['description'] ?? tx['category' style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Text('\$${tx['amount']} / mes', style: const TextStyle(color: AppTheme.expenseCoral, fontWeight: FontWeight.bold)),
-                    
+                      Text(tx['description'] ?? tx['category'], style: const TextStyle(fontWeight: FontWeight.w500)),
+                      Text('\$${tx['amount']} / mes', style: const TextStyle(color: AppTheme.expenseRed, fontWeight: FontWeight.bold)),
+                    ],
                   ),
                 );
               }).toList(),
             ),
-        
+        ],
       ),
     );
   }
 }
-
-
-
-

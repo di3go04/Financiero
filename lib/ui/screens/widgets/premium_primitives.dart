@@ -1,60 +1,40 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// Solid Card with professional flat design
-class SolidCard extends StatefulWidget {
+/// Professional Solid Card with high contrast and sharp design
+class SolidCard extends StatelessWidget {
   final Widget child;
   final double borderRadius;
   final EdgeInsets padding;
-  final bool hasGlow;
   final Color? color;
+  final bool hasBorder;
 
   const SolidCard({
     super.key,
     required this.child,
     this.borderRadius = 16,
     this.padding = const EdgeInsets.all(20),
-    this.hasGlow = false,
     this.color,
+    this.hasBorder = true,
   });
-
-  @override
-  State<SolidCard> createState() => _SolidCardState();
-}
-
-class _SolidCardState extends State<SolidCard> {
-  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark ? AppTheme.borderDark : AppTheme.borderLight;
-    final bgColor = widget.color ?? (isDark ? AppTheme.surfaceDark : AppTheme.surfaceLight);
+    final bgColor = color ?? (isDark ? AppTheme.surfaceDark : AppTheme.surfaceLight);
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(widget.borderRadius),
-          border: Border.all(
-            color: _hovered ? AppTheme.primaryIndigo : borderColor,
-            width: 1.5,
-          ),
-          boxShadow: [
-            if (_hovered)
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-          
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: hasBorder ? Border.all(color: borderColor, width: 1.5) : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
         child: Padding(
-          padding: widget.padding,
-          child: widget.child,
+          padding: padding,
+          child: child,
         ),
       ),
     );
@@ -67,9 +47,47 @@ class ResponsiveBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: child,
+    // Simply use scaffold background — no extra Container layer needed
+    return child;
+  }
+}
+
+/// A wrapper to handle responsive layout changes based on width
+class ResponsiveLayout extends StatelessWidget {
+  final Widget mobile;
+  final Widget? tablet;
+  final Widget desktop;
+
+  const ResponsiveLayout({
+    super.key,
+    required this.mobile,
+    this.tablet,
+    required this.desktop,
+  });
+
+  static bool isMobile(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 600;
+
+  static bool isTablet(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    return w >= 600 && w < 1200;
+  }
+
+  static bool isDesktop(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= 1200;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 1200) {
+          return desktop;
+        } else if (constraints.maxWidth >= 600) {
+          return tablet ?? mobile;
+        } else {
+          return mobile;
+        }
+      },
     );
   }
 }

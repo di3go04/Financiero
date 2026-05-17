@@ -17,7 +17,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingData> _pages = [
     OnboardingData(
       title: 'Bienvenido a Prosper',
-      description: 'Tu plataforma integral para el control financiero total con inteligencia artificial.',
+      description: 'Tu plataforma integral para el control Prosper total con inteligencia artificial.',
       icon: Icons.auto_awesome_rounded,
     ),
     OnboardingData(
@@ -31,6 +31,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       icon: Icons.insights_rounded,
     ),
   ];
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +66,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         height: 8,
                         width: _currentPage == index ? 24 : 8,
                         decoration: BoxDecoration(
-                          color: _currentPage == index ? AppTheme.primaryIndigo : Colors.grey.withValues(alpha: 0.3),
+                          color: _currentPage == index ? AppTheme.primaryBlue : Colors.grey.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -122,10 +128,10 @@ class OnboardingContent extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: AppTheme.primaryIndigo.withValues(alpha: 0.05),
+              color: AppTheme.primaryBlue.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
-            child: Icon(data.icon, size: 100, color: AppTheme.primaryIndigo),
+            child: Icon(data.icon, size: 100, color: AppTheme.primaryBlue),
           ),
           const SizedBox(height: 48),
           Text(

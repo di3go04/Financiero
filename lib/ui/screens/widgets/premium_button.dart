@@ -4,13 +4,15 @@ import '../../../core/theme/app_theme.dart';
 class PremiumButton extends StatefulWidget {
   final Widget child;
   final VoidCallback? onPressed;
-  final List<Color>? gradient;
+  final Color? color;
+  final bool isLoading;
 
   const PremiumButton({
     super.key, 
     required this.child, 
     this.onPressed,
-    this.gradient,
+    this.color,
+    this.isLoading = false,
   });
 
   @override
@@ -42,35 +44,46 @@ class _PremiumButtonState extends State<PremiumButton> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final baseColor = widget.color ?? AppTheme.primaryBlue;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      cursor: SystemMouseCursors.click,
+      cursor: widget.isLoading ? SystemMouseCursors.wait : SystemMouseCursors.click,
       child: GestureDetector(
-        onTapDown: (_) => _controller.forward(),
-        onTapUp: (_) => _controller.reverse(),
+        onTapDown: (_) => widget.isLoading ? null : _controller.forward(),
+        onTapUp: (_) => widget.isLoading ? null : _controller.reverse(),
         onTapCancel: () => _controller.reverse(),
-        onTap: widget.onPressed,
+        onTap: widget.isLoading ? null : widget.onPressed,
         child: ScaleTransition(
           scale: _scaleAnimation,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              gradient: widget.gradient != null 
-                ? LinearGradient(colors: widget.gradient!)
-                : null,
-              boxShadow: _isHovered 
-                ? [BoxShadow(color: (widget.gradient?.first ?? AppTheme.primaryIndigo).withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 2)]
-                : [
+              color: widget.isLoading 
+                ? baseColor.withValues(alpha: 0.6) 
+                : (_isHovered ? baseColor.withValues(alpha: 0.9) : baseColor),
+              boxShadow: _isHovered && !widget.isLoading
+                ? [BoxShadow(color: baseColor.withValues(alpha: 0.2), blurRadius: 10, spreadRadius: 1)]
+                : [],
             ),
-            child: widget.child,
+            child: widget.isLoading
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    ),
+                  ),
+                )
+              : widget.child,
           ),
         ),
       ),
     );
   }
 }
-
-
 

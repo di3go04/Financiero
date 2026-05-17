@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../../../core/theme/app_theme.dart';
 
 class PremiumEmptyState extends StatelessWidget {
@@ -6,7 +7,8 @@ class PremiumEmptyState extends StatelessWidget {
   final String subtitle;
   final String? actionLabel;
   final VoidCallback? onAction;
-  final IconData icon;
+  final IconData? icon;
+  final String? lottieAsset;
 
   const PremiumEmptyState({
     super.key,
@@ -14,7 +16,8 @@ class PremiumEmptyState extends StatelessWidget {
     required this.subtitle,
     this.actionLabel,
     this.onAction,
-    this.icon = Icons.auto_awesome_mosaic_rounded,
+    this.icon,
+    this.lottieAsset,
   });
 
   @override
@@ -24,56 +27,74 @@ class PremiumEmptyState extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: AppTheme.primaryIndigo
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 64,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : AppTheme.textSlate,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: isDark ? AppTheme.textDim : AppTheme.textSlate.withValues(alpha: 0.6),
-                height: 1.5,
-              ),
-            ),
-            if (actionLabel != null && onAction != null) ...[
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (lottieAsset != null)
+                Lottie.asset(
+                  lottieAsset!,
+                  height: 200,
+                  repeat: true,
+                  errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
+                )
+              else
+                _buildFallbackIcon(),
               const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: onAction,
-                icon: const Icon(Icons.add_rounded),
-                label: Text(actionLabel!),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: isDark ? AppTheme.textSnow : AppTheme.textSlate,
+                  letterSpacing: -0.5,
                 ),
               ),
-            
-          
+              const SizedBox(height: 12),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: AppTheme.textDim,
+                  height: 1.5,
+                ),
+              ),
+              if (actionLabel != null && onAction != null) ...[
+                const SizedBox(height: 40),
+                ElevatedButton.icon(
+                  onPressed: onAction,
+                  icon: const Icon(Icons.add_rounded, size: 20),
+                  label: Text(actionLabel!),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
+  Widget _buildFallbackIcon() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon ?? Icons.auto_awesome_mosaic_rounded,
+        size: 64,
+        color: AppTheme.primaryBlue,
+      ),
+    );
+  }
+}

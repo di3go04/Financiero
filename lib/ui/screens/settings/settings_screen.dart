@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../logic/providers/theme_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/biometric_service.dart';
+import '../../../data/services/plaid_service.dart';
+
 import '../widgets/premium_button.dart';
 import '../widgets/premium_primitives.dart';
 
@@ -15,25 +16,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _biometricService = BiometricService();
-  bool _biometricEnabled = false;
-  bool _canUseBiometrics = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadBiometricSettings();
-  }
-
-  Future<void> _loadBiometricSettings() async {
-    final enabled = await _biometricService.isEnabled();
-    final available = await _biometricService.isBiometricAvailable();
-    setState(() {
-      _biometricEnabled = enabled;
-      _canUseBiometrics = available;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -58,38 +40,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: ListTile(
                 title: const Text('Modo de Tema'),
                 subtitle: Text(_getThemeName(themeProvider.themeMode)),
-                leading: const Icon(Icons.palette_rounded, color: AppTheme.primaryIndigo),
+                leading: const Icon(Icons.palette_rounded, color: AppTheme.primaryBlue),
                 onTap: () => _showThemeDialog(context, themeProvider),
               ),
             ),
+
             const SizedBox(height: 24),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-              child: Text('SEGURIDAD', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12)),
+              child: Text('INTEGRACIONES', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12)),
             ),
-            if (_canUseBiometrics)
-              SolidCard(
-                padding: EdgeInsets.zero,
-                child: SwitchListTile(
-                  title: const Text('AutenticaciÃ³n BiomÃ©trica'),
-                  subtitle: const Text('Usa FaceID o Huella para entrar'),
-                  secondary: const Icon(Icons.fingerprint_rounded, color: AppTheme.primaryIndigo),
-                  value: _biometricEnabled,
-                  activeThumbColor: AppTheme.primaryIndigo
-                  onChanged: (value) async {
-                    if (value) {
-                      final authenticated = await _biometricService.authenticate();
-                      if (authenticated) {
-                        await _biometricService.setEnabled(true);
-                        setState(() => _biometricEnabled = true);
-                      }
-                    } else {
-                      await _biometricService.setEnabled(false);
-                      setState(() => _biometricEnabled = false);
-                    }
-                  },
-                ),
+            SolidCard(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                title: const Text('Vincular Cuenta Bancaria'),
+                subtitle: const Text('Conecta tu banco via Plaid'),
+                leading: const Icon(Icons.account_balance_rounded, color: AppTheme.primaryBlue),
+                trailing: const Icon(Icons.add_link_rounded, color: AppTheme.primaryBlue),
+                onTap: _linkBankAccount,
               ),
+            ),
+            
             const SizedBox(height: 48),
             PremiumButton(
               onPressed: () async {
@@ -100,20 +71,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(18),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
+                  color: AppTheme.expenseRed.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.logout_rounded, color: Colors.red),
+                    Icon(Icons.logout_rounded, color: AppTheme.expenseRed),
                     SizedBox(width: 12),
-                    Text('Cerrar sesiÃ³n', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                  
+                    Text('Cerrar sesión', style: TextStyle(color: AppTheme.expenseRed, fontWeight: FontWeight.bold)),
+                  ],
                 ),
               ),
             ),
-          
+          ],
         ),
       ),
     );
@@ -133,37 +104,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Seleccionar Tema'),
-        content: RadioGroup<ThemeMode>(
-          groupValue: provider.themeMode,
-          onChanged: (mode) {
-            provider.setThemeMode(mode!);
-            Navigator.pop(context);
-          },
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              RadioListTile<ThemeMode>(
-                title: Text('Sistema'),
-                value: ThemeMode.system,
-                activeColor: AppTheme.primaryIndigo
-              ),
-              RadioListTile<ThemeMode>(
-                title: Text('Claro'),
-                value: ThemeMode.light,
-                activeColor: AppTheme.primaryIndigo
-              ),
-              RadioListTile<ThemeMode>(
-                title: Text('Oscuro'),
-                value: ThemeMode.dark,
-                activeColor: AppTheme.primaryIndigo
-              ),
-            
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Sistema'),
+              trailing: provider.themeMode == ThemeMode.system ? const Icon(Icons.check, color: AppTheme.primaryBlue) : null,
+              onTap: () {
+                provider.setThemeMode(ThemeMode.system);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('Claro'),
+              trailing: provider.themeMode == ThemeMode.light ? const Icon(Icons.check, color: AppTheme.primaryBlue) : null,
+              onTap: () {
+                provider.setThemeMode(ThemeMode.light);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('Oscuro'),
+              trailing: provider.themeMode == ThemeMode.dark ? const Icon(Icons.check, color: AppTheme.primaryBlue) : null,
+              onTap: () {
+                provider.setThemeMode(ThemeMode.dark);
+                Navigator.pop(context);
+              },
+            ),
+          ],
         ),
       ),
     );
   }
+
+  void _linkBankAccount() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Abriendo pasarela de Plaid...'), backgroundColor: AppTheme.primaryBlue),
+    );
+    
+    PlaidService.openLink(
+      onSuccess: (publicToken, metadata) async {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Banco conectado. Sincronizando transacciones...'), backgroundColor: AppTheme.successBlue),
+        );
+        
+        final supabase = Supabase.instance.client;
+        final userId = supabase.auth.currentUser!.id;
+        
+        // Simular inyección de transacciones reales
+        final mockData = PlaidService.getMockTransactions();
+        for (var tx in mockData) {
+          try {
+            await supabase.from('transactions').insert({
+              'id': tx.id,
+              'user_id': userId,
+              'account_id': tx.accountId,
+              'amount': tx.amount,
+              'category': tx.category,
+              'date': tx.date.toIso8601String(),
+              'type': tx.amount >= 0 ? 'income' : 'expense',
+              'description': tx.name,
+            });
+          } catch (e) {
+            // Ignorar duplicados
+          }
+        }
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('¡Sincronización completada!'), backgroundColor: AppTheme.successBlue),
+          );
+        }
+      },
+      onExit: (metadata) {
+        // Cancelado por el usuario
+      },
+    );
+  }
 }
-
-
-

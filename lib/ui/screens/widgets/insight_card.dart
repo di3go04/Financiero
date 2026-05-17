@@ -36,13 +36,11 @@ class InsightCard extends StatelessWidget {
                 Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 4),
                 Text(description, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13)),
-              
+              ],
             ),
           ),
-        
+        ],
       ),
     );
   }
 }
-
-

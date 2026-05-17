@@ -10,9 +10,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:financiero/main.dart';
-import 'package:financiero/logic/blocs/auth/auth_bloc.dart';
-import 'package:financiero/logic/providers/theme_provider.dart';
+import 'package:prosper/main.dart';
+import 'package:prosper/logic/blocs/auth/auth_bloc.dart';
+import 'package:prosper/logic/providers/theme_provider.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {

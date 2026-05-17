@@ -58,36 +58,63 @@ class _AlertsTabState extends State<AlertsTab> {
 
   void _generateSmartAlerts(List<dynamic> txs) {
     List<Map<String, dynamic>> newAlerts = [];
-    final seen = <String, DateTime>{};
+    final seenDuplicates = <String, DateTime>{};
+    final seenSubscriptions = <String, int>{};
 
     for (var tx in txs) {
       if (tx['type'] == 'expense') {
-        final key = "${tx['category']}_${tx['amount']}";
+        final amt = (tx['amount'] as num).toDouble();
+        final desc = (tx['description'] ?? '').toString();
         final date = DateTime.parse(tx['date']);
-
-        if (seen.containsKey(key)) {
-          final diff = seen[key]!.difference(date).inHours.abs();
+        
+        // 1. Detect Duplicates (Same amount & category in 48h)
+        final dupKey = "${tx['category']}_${tx['amount']}";
+        if (seenDuplicates.containsKey(dupKey)) {
+          final diff = seenDuplicates[dupKey]!.difference(date).inHours.abs();
           if (diff <= 48 && diff > 0) {
             newAlerts.add({
-              'title': 'Gasto Duplicado Detectado',
-              'description': 'Hemos notado dos cobros de \$${tx['amount']} en la categoría ${tx['category']} en menos de 48h.',
+              'title': 'Posible Cobro Duplicado',
+              'description': 'Detectamos dos cobros idénticos en ${tx['category']} en menos de 48h.',
               'icon': Icons.warning_amber_rounded,
-              'color': Colors.orangeAccent,
+              'color': AppTheme.accentAmber,
               'type': 'warning',
             });
           }
         }
-        seen[key] = date;
+        seenDuplicates[dupKey] = date;
+
+        // 2. Detect High Spending (> 500)
+        if (amt > 500) {
+          newAlerts.add({
+            'title': 'Gasto Elevado Detectado',
+            'description': 'Has realizado un pago de ${amt.toStringAsFixed(2)} en $desc.',
+            'icon': Icons.trending_up_rounded,
+            'color': AppTheme.expenseRed,
+            'type': 'danger',
+          });
+        }
+
+        // 3. Potential Subscriptions (Simple heuristic: same name in history)
+        seenSubscriptions[desc] = (seenSubscriptions[desc] ?? 0) + 1;
+        if (seenSubscriptions[desc] == 2) {
+          newAlerts.add({
+            'title': 'Nueva Suscripción?',
+            'description': 'Hemos notado pagos recurrentes a $desc. Considere presupuestarlo.',
+            'icon': Icons.subscriptions_rounded,
+            'color': AppTheme.primaryBlue,
+            'type': 'info',
+          });
+        }
       }
     }
     
-    if (txs.length > 5) {
+    if (txs.length > 10) {
       newAlerts.add({
-        'title': 'Análisis de Tendencias',
-        'description': 'Tu reporte detallado de inteligencia financiera está listo. Tienes un balance positivo este mes.',
+        'title': 'Análisis de Inteligencia',
+        'description': 'Tu reporte Prosper avanzado está listo para exportar. Tienes una buena salud financiera.',
         'icon': Icons.auto_awesome_rounded,
-        'color': AppTheme.primaryIndigo
-        'type': 'info',
+        'color': AppTheme.successBlue,
+        'type': 'success',
       });
     }
 
@@ -101,21 +128,22 @@ class _AlertsTabState extends State<AlertsTab> {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text('Reporte Prosper Intelligence', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+            pw.Text('PROSPER INTELLIGENCE REPORT', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 24),
             pw.TableHelper.fromTextArray(
-              headers: ['Fecha', 'Categoría', 'Tipo', 'Monto'
-              data: _transactions.take(20).map((tx) => [
-                tx['date'].toString().split('T')[0
-                tx['category'
-                tx['type'
+              headers: ['Fecha', 'Descripción', 'Categoría', 'Tipo', 'Monto'],
+              data: _transactions.map((tx) => [
+                tx['date'].toString().split('T')[0],
+                tx['description'] ?? '',
+                tx['category'] ?? '',
+                tx['type'] ?? '',
                 tx['amount'].toString(),
               ]).toList(),
               border: pw.TableBorder.all(),
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               cellAlignment: pw.Alignment.centerLeft,
             ),
-          
+          ],
         ),
       ),
     );
@@ -126,29 +154,35 @@ class _AlertsTabState extends State<AlertsTab> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 850),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 100, left: 24, right: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(isDark),
-              const SizedBox(height: 32),
-              Expanded(
-                child: _isLoading 
-                  ? _buildLoadingState() 
-                  : (_alerts.isEmpty ? _buildEmptyState() : _buildList(isDark)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: Padding(
+              padding: EdgeInsets.only(top: 80, left: isNarrow ? 16 : 24, right: isNarrow ? 16 : 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(isDark, isNarrow),
+                  const SizedBox(height: 32),
+                  Expanded(
+                    child: _isLoading 
+                      ? _buildLoadingState() 
+                      : (_alerts.isEmpty ? _buildEmptyState() : _buildList(isDark)),
+                  ),
+                ],
               ),
-            
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  Widget _buildHeader(bool isDark, bool isNarrow) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -158,29 +192,30 @@ class _AlertsTabState extends State<AlertsTab> {
             Text(
               'Intelligence', 
               style: TextStyle(
-                fontSize: 32, 
-                fontWeight: FontWeight.bold, 
+                fontSize: isNarrow ? 28 : 32, 
+                fontWeight: FontWeight.w900, 
                 color: isDark ? AppTheme.textSnow : AppTheme.textSlate
               )
             ),
             const SizedBox(height: 4),
-            Text(
-              'Alertas y reportes sólidos.', 
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 15)
+            const Text(
+              'Alertas predictivas y reportes.', 
+              style: TextStyle(color: AppTheme.textDim, fontSize: 14)
             ),
-          
+          ],
         ),
         ElevatedButton.icon(
           onPressed: _exportToPDF,
           icon: const Icon(Icons.description_rounded, size: 18),
-          label: const Text('Exportar PDF'),
+          label: isNarrow ? const Text('PDF') : const Text('Exportar PDF'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryIndigo
+            backgroundColor: AppTheme.primaryBlue,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
-      
+      ],
     );
   }
 
@@ -196,8 +231,8 @@ class _AlertsTabState extends State<AlertsTab> {
 
   Widget _buildEmptyState() {
     return const PremiumEmptyState(
-      title: 'Tu cuenta está segura',
-      subtitle: 'No hemos detectado anomalías recientes.',
+      title: 'Tu cuenta está protegida',
+      subtitle: 'No hemos detectado anomalías o gastos inusuales en tus últimos movimientos.',
       icon: Icons.verified_user_rounded,
     );
   }
@@ -209,6 +244,8 @@ class _AlertsTabState extends State<AlertsTab> {
       separatorBuilder: (_, __) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final alert = _alerts[index];
+        final color = alert['color'] as Color;
+
         return SolidCard(
           borderRadius: 16,
           padding: const EdgeInsets.all(20),
@@ -217,10 +254,10 @@ class _AlertsTabState extends State<AlertsTab> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: alert['color' 
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(alert['icon' color: Colors.white, size: 24),
+                child: Icon(alert['icon'] as IconData, color: color, size: 24),
               ),
               const SizedBox(width: 20),
               Expanded(
@@ -228,23 +265,22 @@ class _AlertsTabState extends State<AlertsTab> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      alert['title' 
+                      alert['title'] ?? 'Alerta', 
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      alert['description' 
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade500, height: 1.4)
+                      alert['description'] ?? '', 
+                      style: const TextStyle(fontSize: 13, color: AppTheme.textDim, height: 1.4)
                     ),
-                  
+                  ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Colors.grey, size: 24),
-            
+              const Icon(Icons.chevron_right_rounded, color: AppTheme.textDim, size: 24),
+            ],
           ),
         );
       },
     );
   }
 }
-

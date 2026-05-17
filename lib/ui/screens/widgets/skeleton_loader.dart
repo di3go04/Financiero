@@ -3,14 +3,14 @@ import 'package:shimmer/shimmer.dart';
 import '../../../core/theme/app_theme.dart';
 
 class SkeletonBox extends StatelessWidget {
-  final double? width;
-  final double? height;
+  final double width;
+  final double height;
   final double borderRadius;
 
   const SkeletonBox({
     super.key,
-    this.width,
-    this.height,
+    required this.width,
+    required this.height,
     this.borderRadius = 12,
   });
 
@@ -19,13 +19,13 @@ class SkeletonBox extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Shimmer.fromColors(
-      baseColor: isDark ? const Color(0xFF1F2937) : const Color(0xFFE5E7EB),
-      highlightColor: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
+      baseColor: isDark ? AppTheme.surfaceDark : Colors.grey[300]!,
+      highlightColor: isDark ? AppTheme.borderDark : Colors.grey[100]!,
       child: Container(
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.surfaceDark : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
       ),
@@ -33,37 +33,56 @@ class SkeletonBox extends StatelessWidget {
   }
 }
 
-class SkeletonCard extends StatelessWidget {
-  const SkeletonCard({super.key});
+class DashboardSkeleton extends StatelessWidget {
+  const DashboardSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppTheme.borderDark : AppTheme.borderLight),
-      ),
-      child: Row(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 80, left: 24, right: 24, bottom: 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SkeletonBox(width: 48, height: 48, borderRadius: 12),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SkeletonBox(width: MediaQuery.of(context).size.width * 0.4, height: 16),
-                const SizedBox(height: 8),
-                SkeletonBox(width: MediaQuery.of(context).size.width * 0.25, height: 12),
-              
+          const SkeletonBox(width: 200, height: 32),
+          const SizedBox(height: 32),
+          const SkeletonBox(width: double.infinity, height: 160),
+          const SizedBox(height: 32),
+          Row(
+            children: [
+              Expanded(child: const SkeletonBox(width: double.infinity, height: 100)),
+              const SizedBox(width: 16),
+              Expanded(child: const SkeletonBox(width: double.infinity, height: 100)),
+            ],
+          ),
+          const SizedBox(height: 32),
+          const SkeletonBox(width: 150, height: 24),
+          const SizedBox(height: 16),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 5,
+            itemBuilder: (_, __) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: const SkeletonBox(width: double.infinity, height: 72),
             ),
           ),
-          const SkeletonBox(width: 60, height: 20),
-        
+        ],
+      ),
+    );
+  }
+}
+
+class ListSkeleton extends StatelessWidget {
+  const ListSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 80, left: 24, right: 24, bottom: 40),
+      itemCount: 8,
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: const SkeletonBox(width: double.infinity, height: 80),
       ),
     );
   }

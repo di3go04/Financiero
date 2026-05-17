@@ -19,7 +19,7 @@ class SmartFAB extends StatefulWidget {
 }
 
 class _SmartFABState extends State<SmartFAB> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late final AnimationController _controller;
   bool _isOpen = false;
 
   @override
@@ -38,12 +38,13 @@ class _SmartFABState extends State<SmartFAB> with SingleTickerProviderStateMixin
   }
 
   void _toggle() {
-    setState(() => _isOpen = !_isOpen);
+    _isOpen = !_isOpen;
     if (_isOpen) {
       _controller.forward();
     } else {
       _controller.reverse();
     }
+    // No setState needed — AnimatedBuilder listens to _controller
   }
 
   @override
@@ -52,21 +53,23 @@ class _SmartFABState extends State<SmartFAB> with SingleTickerProviderStateMixin
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        _buildAction(
+        _SmartFABAction(
+          controller: _controller,
           icon: Icons.track_changes_rounded,
           label: 'Nueva Meta',
           onTap: () { _toggle(); widget.onAddGoal(); },
           index: 2,
         ),
         const SizedBox(height: 12),
-        _buildAction(
+        _SmartFABAction(
+          controller: _controller,
           icon: Icons.donut_large_rounded,
           label: 'Nuevo Presupuesto',
           onTap: () { _toggle(); widget.onAddBudget(); },
           index: 1,
         ),
-        const SizedBox(height: 12),
-        _buildAction(
+        _SmartFABAction(
+          controller: _controller,
           icon: Icons.add_shopping_cart_rounded,
           label: 'Nueva Transacción',
           onTap: () { _toggle(); widget.onAddTransaction(); },
@@ -75,63 +78,81 @@ class _SmartFABState extends State<SmartFAB> with SingleTickerProviderStateMixin
         const SizedBox(height: 16),
         FloatingActionButton(
           onPressed: _toggle,
-          backgroundColor: AppTheme.primaryIndigo,
+          backgroundColor: AppTheme.primaryBlue,
           child: AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {
               return Transform.rotate(
                 angle: _controller.value * math.pi * 0.75,
-                child: const Icon(Icons.add_rounded, size: 32, color: Colors.white),
+                child: child,
               );
             },
+            child: const Icon(Icons.add_rounded, size: 32, color: Colors.white),
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildAction({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    required int index,
-  }) {
+/// Extracted action item — prevents parent rebuild on animation ticks
+class _SmartFABAction extends StatelessWidget {
+  final AnimationController controller;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final int index;
+
+  const _SmartFABAction({
+    required this.controller,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _controller,
+      animation: controller,
       builder: (context, child) {
         final animValue = Curves.easeOutBack.transform(
-          (_controller.value - (index * 0.1)).clamp(0.0, 1.0),
+          (controller.value - (index * 0.1)).clamp(0.0, 1.0),
         );
         return Transform.scale(
           scale: animValue,
           child: Opacity(
-            opacity: animValue,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    label,
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FloatingActionButton.small(
-                  heroTag: 'action_$index',
-                  onPressed: onTap,
-                  backgroundColor: AppTheme.primaryIndigo,
-                  child: Icon(icon, color: Colors.white),
-                ),
-              ],
-            ),
+            opacity: animValue.clamp(0.0, 1.0),
+            child: child,
           ),
         );
       },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 12),
+            FloatingActionButton.small(
+              heroTag: 'action_$index',
+              onPressed: onTap,
+              backgroundColor: AppTheme.primaryBlue,
+              child: Icon(icon, color: Colors.white),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -30,6 +30,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _signUp() async {
     if (!mounted) return;
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _nameController.text.isEmpty) {
+      _showError('Por favor completa todos los campos');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       await _supabase.auth.signUp(
@@ -42,33 +47,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Registro exitoso. Revisa tu email para confirmar.',
-              style: GoogleFonts.inter(),
-            ),
+            content: const Text('Registro exitoso. Revisa tu email para confirmar.'),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: AppTheme.primaryIndigo
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+            backgroundColor: AppTheme.successBlue,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString(), style: GoogleFonts.inter()),
-            backgroundColor: AppTheme.expenseCoral,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
-          ),
-        );
-      }
+      if (mounted) _showError(e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppTheme.expenseRed,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
   }
 
   @override
@@ -85,196 +87,115 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: SolidCard(
-                borderRadius: 24,
-                padding: const EdgeInsets.all(36),
+                borderRadius: 32,
+                padding: const EdgeInsets.all(40),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── Header ────────────────────────────────────────
                     Center(
                       child: Container(
-                        width: 64,
-                        height: 64,
+                        width: 72,
+                        height: 72,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              AppTheme.primaryIndigo
-                              
-                            
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
+                          color: AppTheme.primaryBlue,
+                          borderRadius: BorderRadius.circular(22),
                           boxShadow: [
                             BoxShadow(
-                              color:
-                                  AppTheme.primaryIndigo.withValues(alpha: 0.3),
+                              color: AppTheme.primaryBlue.withValues(alpha: 0.3),
                               blurRadius: 20,
                               offset: const Offset(0, 6),
                             ),
-                          
+                          ],
                         ),
-                        child: const Icon(Icons.person_add_rounded,
-                            size: 30, color: Colors.white),
+                        child: const Icon(Icons.person_add_rounded, size: 36, color: Colors.white),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     Center(
                       child: Text(
                         'Únete a Prosper',
                         style: GoogleFonts.inter(
                           fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: isDark ? Colors.white : AppTheme.textSlate,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1,
+                          color: isDark ? AppTheme.textSnow : AppTheme.textSlate,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Center(
+                    const SizedBox(height: 8),
+                    const Center(
                       child: Text(
                         'Comienza tu camino a la libertad financiera',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : AppTheme.textSlate,
-                          height: 1.5,
-                        ),
+                        style: TextStyle(color: AppTheme.textDim, fontSize: 14, height: 1.5),
                       ),
                     ),
-                    const SizedBox(height: 36),
-
-                    // ── Full Name ─────────────────────────────────────
+                    const SizedBox(height: 40),
                     TextField(
                       controller: _nameController,
-                      keyboardType: TextInputType.name,
                       textCapitalization: TextCapitalization.words,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: isDark ? Colors.white : AppTheme.textSlate,
-                      ),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Nombre completo',
-                        labelStyle: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : AppTheme.textSlate,
-                        ),
-                        prefixIcon: const Icon(Icons.person_outline_rounded),
+                        prefixIcon: Icon(Icons.person_outline_rounded),
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // ── Email ─────────────────────────────────────────
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: isDark ? Colors.white : AppTheme.textSlate,
-                      ),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Correo electrónico',
-                        labelStyle: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : AppTheme.textSlate,
-                        ),
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        prefixIcon: Icon(Icons.email_outlined),
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // ── Password ──────────────────────────────────────
                     TextField(
                       controller: _passwordController,
                       obscureText: !_showPassword,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: isDark ? Colors.white : AppTheme.textSlate,
-                      ),
                       onSubmitted: (_) => _signUp(),
                       decoration: InputDecoration(
                         labelText: 'Contraseña',
-                        labelStyle: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : AppTheme.textSlate,
-                        ),
                         prefixIcon: const Icon(Icons.lock_outline_rounded),
                         suffixIcon: IconButton(
-                          icon: Icon(
-                            _showPassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                          ),
-                          onPressed: () =>
-                              setState(() => _showPassword = !_showPassword),
+                          icon: Icon(_showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                          onPressed: () => setState(() => _showPassword = !_showPassword),
                         ),
                       ),
                     ),
                     const SizedBox(height: 32),
-
-                    // ── Submit ────────────────────────────────────────
                     _isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.primaryIndigo),
-                            ),
-                          )
+                        ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
                         : PremiumButton(
                             onPressed: _signUp,
                             child: Container(
-                              height: 52,
+                              height: 56,
                               alignment: Alignment.center,
-                              child: Text(
+                              child: const Text(
                                 'Crear cuenta',
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                  letterSpacing: 0.3,
-                                ),
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                               ),
                             ),
                           ),
-                    const SizedBox(height: 20),
-
-                    // ── Back to login ─────────────────────────────────
+                    const SizedBox(height: 24),
                     Center(
                       child: TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: RichText(
                           text: TextSpan(
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : AppTheme.textSlate,
-                            ),
-                            children: [
-                              const TextSpan(text: '¿Ya tienes cuenta? '),
+                            style: TextStyle(color: isDark ? AppTheme.textSnow : AppTheme.textSlate, fontSize: 14),
+                            children: const [
+                              TextSpan(text: '¿Ya tienes cuenta? '),
                               TextSpan(
                                 text: 'Inicia sesión',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.primaryIndigo
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primaryBlue),
                               ),
-                            
+                            ],
                           ),
                         ),
                       ),
                     ),
-                  
+                  ],
                 ),
               ),
             ),
@@ -284,5 +205,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-
-

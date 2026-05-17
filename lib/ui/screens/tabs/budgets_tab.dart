@@ -61,46 +61,52 @@ class _BudgetsTabState extends State<BudgetsTab> {
     final settings = Provider.of<UserSettingsProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 800),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 100, left: 24, right: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(isDark),
-              const SizedBox(height: 32),
-              Expanded(
-                child: _isLoading 
-                  ? _buildLoadingState() 
-                  : (_budgets.isEmpty ? _buildEmptyState() : _buildList(currency, settings, isDark)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: Padding(
+              padding: EdgeInsets.only(top: 80, left: isNarrow ? 16 : 24, right: isNarrow ? 16 : 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(isDark, isNarrow),
+                  const SizedBox(height: 32),
+                  Expanded(
+                    child: _isLoading 
+                      ? _buildLoadingState() 
+                      : (_budgets.isEmpty ? _buildEmptyState() : _buildList(currency, settings, isDark)),
+                  ),
+                ],
               ),
-            
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  Widget _buildHeader(bool isDark, bool isNarrow) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Presupuestos', 
           style: TextStyle(
-            fontSize: 32, 
-            fontWeight: FontWeight.bold, 
+            fontSize: isNarrow ? 28 : 32, 
+            fontWeight: FontWeight.w900, 
             color: isDark ? AppTheme.textSnow : AppTheme.textSlate
           )
         ),
         const SizedBox(height: 4),
-        Text(
-          'Límites de gasto sólidos y claros.', 
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 15)
+        const Text(
+          'Establece límites sólidos para tus gastos.', 
+          style: TextStyle(color: AppTheme.textDim, fontSize: 15)
         ),
-      
+      ],
     );
   }
 
@@ -115,9 +121,9 @@ class _BudgetsTabState extends State<BudgetsTab> {
   }
 
   Widget _buildEmptyState() {
-    return const PremiumEmptyState(
+    return PremiumEmptyState(
       title: 'Sin presupuestos',
-      subtitle: 'Define límites de gasto para tus categorías.',
+      subtitle: 'Define límites de gasto para tus categorías principales.',
       icon: Icons.donut_large_rounded,
       actionLabel: 'Crear Presupuesto',
       onAction: widget.onAddBudget,
@@ -131,10 +137,10 @@ class _BudgetsTabState extends State<BudgetsTab> {
       separatorBuilder: (_, __) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final b = _budgets[index];
-        final category = b['category'] ?? 'Otra';
+        final category = b['category'] ?? 'Otros';
         final color = AppTheme.categoryColor(category);
         final spent = (b['spent'] ?? 0).toDouble();
-        final limit = (b['limit_amount'] ?? 1).toDouble();
+        final limit = (b['amount'] ?? 1).toDouble();
         
         return _buildBudgetCard(category, spent, limit, color, currency, settings, isDark);
       },
@@ -143,7 +149,7 @@ class _BudgetsTabState extends State<BudgetsTab> {
 
   Widget _buildBudgetCard(String category, double spent, double limit, Color color, CurrencyProvider currency, UserSettingsProvider settings, bool isDark) {
     final progress = (spent / limit).clamp(0.0, 1.0);
-    final isOver = progress >= 1.0;
+    final isOver = progress >= 0.8;
 
     return SolidCard(
       borderRadius: 16,
@@ -153,9 +159,12 @@ class _BudgetsTabState extends State<BudgetsTab> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.pie_chart_outline_rounded, color: Colors.white, size: 20),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1), 
+                  borderRadius: BorderRadius.circular(12)
+                ),
+                child: Icon(Icons.pie_chart_outline_rounded, color: color, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -164,43 +173,41 @@ class _BudgetsTabState extends State<BudgetsTab> {
                   children: [
                     Text(category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     Text(
-                      isOver ? 'Límite excedido' : 'En buen camino', 
-                      style: TextStyle(color: isOver ? AppTheme.expenseRose : Colors.grey, fontSize: 12)
+                      isOver ? (progress >= 1.0 ? 'Límite excedido' : 'Cerca del límite') : 'En buen camino', 
+                      style: TextStyle(
+                        color: progress >= 1.0 ? AppTheme.expenseRed : (isOver ? AppTheme.accentAmber : AppTheme.successBlue), 
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold
+                      )
                     ),
-                  
+                  ],
                 ),
               ),
               Text(
                 settings.isPrivacyMode ? '••••' : currency.format(limit),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
               ),
-            
+            ],
           ),
-          const SizedBox(height: 20),
-          // Solid Progress Bar
-          Container(
-            height: 8,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04), 
-              borderRadius: BorderRadius.circular(4)
-            ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: progress,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
+          const SizedBox(height: 24),
+          // Animated Progress Bar
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: progress),
+            duration: const Duration(seconds: 1),
+            curve: Curves.easeOutCubic,
+            builder: (context, val, child) {
+              return Column(
+                children: [
+                  LinearProgressIndicator(
+                    value: val,
+                    backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                    valueColor: AlwaysStoppedAnimation<Color>(val >= 1.0 ? AppTheme.expenseRed : color),
+                    minHeight: 10,
+                    borderRadius: BorderRadius.circular(5),
                   ),
-                ),
-              
-            ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 12),
           Row(
@@ -208,17 +215,20 @@ class _BudgetsTabState extends State<BudgetsTab> {
             children: [
               Text(
                 '${(progress * 100).toStringAsFixed(0)}% consumido', 
-                style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)
+                style: TextStyle(
+                  color: progress >= 1.0 ? AppTheme.expenseRed : color, 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 12
+                )
               ),
               Text(
                 settings.isPrivacyMode ? '••••' : 'Gastado: ${currency.format(spent)}', 
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 12)
+                style: const TextStyle(color: AppTheme.textDim, fontSize: 12)
               ),
-            
+            ],
           ),
-        
+        ],
       ),
     );
   }
 }
-

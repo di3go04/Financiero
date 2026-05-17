@@ -6,9 +6,10 @@ import 'package:csv/csv.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../logic/providers/currency_provider.dart';
 import '../../../logic/providers/user_settings_provider.dart';
+import '../../../logic/providers/transaction_provider.dart';
 import '../widgets/premium_primitives.dart';
 import '../widgets/skeleton_loader.dart';
-import '../widgets/empty_state.dart';
+import '../widgets/prosper_empty_state.dart';
 import '../widgets/transaction_form.dart';
 
 class TransactionsTab extends StatefulWidget {
@@ -20,63 +21,127 @@ class TransactionsTab extends StatefulWidget {
 
 class _TransactionsTabState extends State<TransactionsTab> with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
-  List<dynamic> _transactions = [];
-  bool _isLoading = true;
-  StreamSubscription? _subscription;
   String _searchQuery = '';
   String _selectedFilter = 'Todas';
   final List<String> _filters = ['Todas', 'Ingresos', 'Gastos'];
 
   @override
-  void initState() {
-    super.initState();
-    _subscribeToTransactions();
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
-  }
-
-  void _subscribeToTransactions() {
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-    final userId = _supabase.auth.currentUser!.id;
+  Widget build(BuildContext context) {
+    final transactionProvider = Provider.of<TransactionProvider>(context);
+    final transactions = transactionProvider.transactions;
     
-    _subscription = _supabase
-        .from('transactions')
-        .stream(primaryKey: ['id'])
-        .eq('user_id', userId)
-        .order('date', ascending: false)
-        .listen((data) {
-      if (mounted) {
-        setState(() {
-          _transactions = data;
-          _isLoading = false;
-        });
-      }
-    }, onError: (error) {
-      if (mounted) setState(() => _isLoading = false);
-    });
-  }
-
-  List<dynamic> get _filteredTransactions {
-    return _transactions.where((tx) {
-      final matchesSearch = (tx['description'] ?? tx['category']).toString().toLowerCase().contains(_searchQuery.toLowerCase());
+    // Filter logic
+    final filteredData = transactions.where((tx) {
+      final desc = (tx['description'] ?? '').toString().toLowerCase();
+      final cat = (tx['category'] ?? '').toString().toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      final matchesSearch = desc.contains(query) || cat.contains(query);
+      
       final isExpense = tx['type'] == 'expense';
       final matchesFilter = _selectedFilter == 'Todas' || 
                            (_selectedFilter == 'Ingresos' && !isExpense) || 
                            (_selectedFilter == 'Gastos' && isExpense);
       return matchesSearch && matchesFilter;
     }).toList();
+
+    final currency = Provider.of<CurrencyProvider>(context);
+    final settings = Provider.of<UserSettingsProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: transactionProvider.isLoading && transactions.isEmpty
+        ? const ListSkeleton(key: ValueKey('loading'))
+        : LayoutBuilder(
+            key: const ValueKey('content'),
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 600;
+              
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1000),
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 80, left: isNarrow ? 16 : 24, right: isNarrow ? 16 : 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(isDark, isNarrow, transactions),
+                        const SizedBox(height: 24),
+                        _buildSearchAndFilters(isDark, isNarrow),
+                        const SizedBox(height: 24),
+                        Expanded(
+                          child: filteredData.isEmpty 
+                            ? _buildEmptyState() 
+                            : _buildList(filteredData, currency, settings, isDark),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+    );
   }
 
-  void _exportToCSV() {
+  Widget _buildEmptyState() {
+    return ProsperEmptyState(
+      title: 'Sin movimientos aún',
+      description: 'Tu historial está vacío. Comienza registrando un ingreso o un gasto para ver el análisis de tus finanzas.',
+      buttonLabel: 'Añadir mi primera transacción',
+      lottieAsset: 'https://assets10.lottiefiles.com/packages/lf20_0s6tfbuc.json',
+      icon: Icons.receipt_long_rounded,
+      onAction: () => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => const TransactionForm(),
+      ),
+    );
+  }
+
+
+  Widget _buildHeader(bool isDark, bool isNarrow, List<dynamic> transactions) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Historial', 
+              style: TextStyle(
+                fontSize: isNarrow ? 28 : 32, 
+                fontWeight: FontWeight.w900, 
+                color: isDark ? AppTheme.textSnow : AppTheme.textSlate
+              )
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Gestión sólida de tus movimientos.', 
+              style: TextStyle(color: AppTheme.textDim, fontSize: 14)
+            ),
+          ],
+        ),
+        IconButton.filledTonal(
+          onPressed: () => _exportToCSV(transactions),
+          icon: const Icon(Icons.download_rounded),
+          tooltip: 'Exportar CSV',
+          style: IconButton.styleFrom(
+            backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
+            foregroundColor: AppTheme.primaryBlue,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _exportToCSV(List<dynamic> transactions) {
     List<List<dynamic>> rows = [
       ['Fecha', 'Descripción', 'Categoría', 'Tipo', 'Monto']
     ];
-    for (var tx in _transactions) {
+    for (var tx in transactions) {
       rows.add([
         tx['date'],
         tx['description'] ?? '',
@@ -86,7 +151,7 @@ class _TransactionsTabState extends State<TransactionsTab> with SingleTickerProv
       ]);
     }
     String csv = const ListToCsvConverter().convert(rows);
-    // In a real app we'd save this, but for now we just show a snackbar
+    debugPrint(csv);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Reporte CSV generado exitosamente (Simulado)')),
     );
@@ -101,79 +166,13 @@ class _TransactionsTabState extends State<TransactionsTab> with SingleTickerProv
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final filteredData = _filteredTransactions;
-    final currency = Provider.of<CurrencyProvider>(context);
-    final settings = Provider.of<UserSettingsProvider>(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 900),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 80, left: 24, right: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(isDark),
-              const SizedBox(height: 24),
-              _buildSearchAndFilters(isDark),
-              const SizedBox(height: 24),
-              Expanded(
-                child: _isLoading 
-                  ? _buildLoadingState() 
-                  : (filteredData.isEmpty ? _buildEmptyState() : _buildList(filteredData, currency, settings, isDark)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(bool isDark) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Historial', 
-              style: TextStyle(
-                fontSize: 32, 
-                fontWeight: FontWeight.bold, 
-                color: isDark ? AppTheme.textSnow : AppTheme.textSlate
-              )
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Transacciones sólidas y detalladas.', 
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 15)
-            ),
-          ],
-        ),
-        IconButton.filledTonal(
-          onPressed: _exportToCSV,
-          icon: const Icon(Icons.download_rounded),
-          tooltip: 'Exportar CSV',
-          style: IconButton.styleFrom(
-            backgroundColor: AppTheme.primaryIndigo.withValues(alpha: 0.1),
-            foregroundColor: AppTheme.primaryIndigo,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSearchAndFilters(bool isDark) {
+  Widget _buildSearchAndFilters(bool isDark, bool isNarrow) {
     return Column(
       children: [
         TextField(
           onChanged: (val) => setState(() => _searchQuery = val),
           decoration: InputDecoration(
-            hintText: 'Buscar movimientos...',
+            hintText: 'Buscar por descripción o categoría...',
             prefixIcon: const Icon(Icons.search_rounded),
             filled: true,
             fillColor: isDark ? AppTheme.surfaceDark : Colors.white,
@@ -191,8 +190,12 @@ class _TransactionsTabState extends State<TransactionsTab> with SingleTickerProv
                   label: Text(filter),
                   selected: isSelected,
                   onSelected: (val) => setState(() => _selectedFilter = filter),
-                  selectedColor: AppTheme.primaryIndigo,
-                  labelStyle: TextStyle(color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
+                  selectedColor: AppTheme.primaryBlue,
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               );
             }).toList(),
@@ -204,19 +207,24 @@ class _TransactionsTabState extends State<TransactionsTab> with SingleTickerProv
 
   Widget _buildLoadingState() {
     return ListView.builder(
-      itemCount: 5,
+      itemCount: 6,
       itemBuilder: (_, __) => const Padding(
-        padding: EdgeInsets.only(bottom: 16),
+        padding: EdgeInsets.only(bottom: 12),
         child: SkeletonBox(height: 80, borderRadius: 16),
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return const PremiumEmptyState(
-      title: 'Sin resultados',
-      subtitle: 'No hay transacciones que coincidan.',
+    return PremiumEmptyState(
+      title: 'No hay resultados',
+      subtitle: 'Intenta con otra búsqueda o filtro.',
       icon: Icons.search_off_rounded,
+      actionLabel: 'Ver todo',
+      onAction: () => setState(() {
+        _searchQuery = '';
+        _selectedFilter = 'Todas';
+      }),
     );
   }
 
@@ -228,7 +236,7 @@ class _TransactionsTabState extends State<TransactionsTab> with SingleTickerProv
       itemBuilder: (context, index) {
         final tx = data[index];
         final isExpense = tx['type'] == 'expense';
-        final color = AppTheme.categoryColor(tx['category']);
+        final color = AppTheme.categoryColor(tx['category'] ?? '');
         
         return SolidCard(
           borderRadius: 16,
@@ -237,8 +245,12 @@ class _TransactionsTabState extends State<TransactionsTab> with SingleTickerProv
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-                child: Icon(isExpense ? Icons.shopping_bag_outlined : Icons.payments_outlined, color: Colors.white, size: 22),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                child: Icon(
+                  isExpense ? Icons.shopping_bag_outlined : Icons.payments_outlined, 
+                  color: color, 
+                  size: 22
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -250,8 +262,8 @@ class _TransactionsTabState extends State<TransactionsTab> with SingleTickerProv
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
                     ),
                     Text(
-                      tx['category'], 
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500)
+                      tx['category'] ?? 'General', 
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textDim)
                     ),
                   ],
                 ),
@@ -262,21 +274,24 @@ class _TransactionsTabState extends State<TransactionsTab> with SingleTickerProv
                   Text(
                     settings.isPrivacyMode ? '••••' : '${isExpense ? "-" : "+"} ${currency.format((tx['amount'] as num).toDouble())}',
                     style: TextStyle(
-                      fontWeight: FontWeight.bold, 
+                      fontWeight: FontWeight.w900, 
                       fontSize: 16,
-                      color: isExpense ? AppTheme.expenseRose : AppTheme.incomeTeal,
+                      color: isExpense ? AppTheme.expenseRed : AppTheme.successBlue,
                     ),
                   ),
                   Row(
                     children: [
                       Text(
                         tx['date'].toString().split('T')[0], 
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500)
+                        style: const TextStyle(fontSize: 11, color: AppTheme.textDim)
                       ),
                       const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => _editTransaction(tx),
-                        child: Icon(Icons.edit_note_rounded, size: 18, color: AppTheme.primaryIndigo.withValues(alpha: 0.6)),
+                      IconButton(
+                        onPressed: () => _editTransaction(tx),
+                        icon: const Icon(Icons.edit_note_rounded, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        color: AppTheme.primaryBlue,
                       ),
                     ],
                   ),
